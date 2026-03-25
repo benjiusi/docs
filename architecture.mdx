@@ -9,7 +9,7 @@ BlankFX is a purpose-built FX protocol. Unlike general-purpose DEXs that treat e
 
 ## The two-layer model
 
-<img src="/images/architecture.svg" alt="BlankFX Architecture — Router, USD Hub, FX Pools, Oracle, Access Control" />
+![BlankFX Architecture](/images/architecture.svg)
 
 **Layer 1 — USD Hub:** Holds all USD-denominated stablecoins (USDC, USDT, RLUSD) in a single pool. Swaps between USD stablecoins happen here at near 1:1 rates.
 
@@ -41,7 +41,7 @@ This means:
 
 ## Settlement flow
 
-<img src="/images/settlement-flow.svg" alt="BlankFX settlement flow — from swap to settlement in a single block" />
+![Settlement flow](/images/settlement-flow.svg)
 
 Settlement is final the moment the transaction confirms. No pending states, no clearing period.
 
