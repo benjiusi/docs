@@ -1,48 +1,81 @@
 ---
-title: AML/CFT Policy
-description: BlankFX Anti-Money Laundering and Counter-Terrorist Financing Policy.
+title: AML/CFT policy
+description: BlankFX Anti-Money Laundering and Counter-Terrorist Financing policy summary.
 ---
 
-# AML/CFT Policy
-
-<Info>
-The full BlankFX Anti-Money Laundering and Counter-Terrorist Financing Policy is maintained as a separate document and will be published here upon completion of the current review cycle.
-</Info>
-
-## Policy summary
-
-BlankFX is committed to preventing the use of its protocol for money laundering, terrorist financing, or other illicit financial activity. This policy applies to all users, liquidity providers, market makers, and integration partners.
-
-### Key principles
-
-- **Know Your Customer (KYC)** — Users must be verified before accessing the protocol. Verification tiers determine available functionality and trade limits.
-- **Transaction monitoring** — Automated monitoring of on-chain activity for suspicious patterns, including unusual trade sizes, rapid deposits/withdrawals, and interactions with flagged addresses.
-- **Sanctions screening** — All wallet addresses are screened against OFAC, EU, and UN sanctions lists before trade execution.
-- **Suspicious Activity Reporting** — Identified suspicious activity is reported to relevant authorities in accordance with applicable law.
-- **Record keeping** — Transaction records are maintained for the period required by applicable regulation (minimum 5 years).
-
-### Access tiers
-
-| Tier | Verification | Limits |
-|------|-------------|--------|
-| Unverified | Wallet connection only | No trading access |
-| Basic | Email + wallet verification | Limited trade size |
-| Standard | KYC (ID + proof of address) | Standard trade limits |
-| Institutional | Enhanced due diligence | Custom limits |
-
-### Prohibited activities
-
-The following activities are prohibited on BlankFX:
-- Use of the protocol to launder proceeds of crime
-- Transactions designed to evade sanctions
-- Structuring transactions to avoid reporting thresholds
-- Use of mixing services or privacy protocols to obscure fund origins before interacting with BlankFX
-- Any activity that violates applicable anti-money laundering or counter-terrorist financing laws
-
-### Compliance contact
-
-For compliance inquiries, suspicious activity reports, or law enforcement requests, contact the BlankFX compliance team.
+# AML/CFT policy
 
 <Note>
-This summary will be replaced with the full policy document once the current review is complete. The full policy is being benchmarked against regulatory standards including FATF guidelines, EU AMLD6, and MiCA requirements.
+This is a summary of BlankFX's Anti-Money Laundering and Counter-Terrorist Financing policy. The full policy document is maintained internally and available to regulators and compliance partners on request.
 </Note>
+
+## Commitment
+
+BlankFX is committed to preventing the use of its protocol for money laundering, terrorist financing, sanctions evasion, or other financial crimes. This policy applies to all users, liquidity providers, market makers, and integration partners.
+
+## Risk-based approach
+
+BlankFX applies a risk-based approach to AML/CFT compliance, as recommended by the Financial Action Task Force (FATF). This means:
+- Higher-risk activities and users receive enhanced scrutiny
+- Lower-risk activities follow simplified procedures
+- Risk assessments are reviewed and updated regularly
+
+## User access and identification
+
+All users must be registered through BlankFX's access control system before trading. Access tiers determine:
+- Maximum trade sizes per transaction and per day
+- Available features (pool swaps, RFQ access, LP deposits)
+- Reporting and monitoring thresholds
+
+The protocol's on-chain access control (BlankFXAccess contract) enforces these tiers at the smart contract level. Suspended users cannot execute any transactions.
+
+## Transaction monitoring
+
+BlankFX monitors on-chain activity for:
+- Unusual transaction patterns (rapid-fire trades, round-number amounts)
+- Transactions involving flagged addresses (OFAC SDN list, other sanctions lists)
+- Volume thresholds that trigger enhanced review
+- Structuring patterns designed to avoid reporting thresholds
+
+## Sanctions compliance
+
+BlankFX screens all wallet addresses against:
+- OFAC Specially Designated Nationals (SDN) list
+- EU consolidated sanctions list
+- UN Security Council sanctions list
+- Other applicable sanctions regimes
+
+Wallets associated with sanctioned individuals, entities, or jurisdictions are blocked from accessing the protocol.
+
+## Suspicious activity reporting
+
+When suspicious activity is identified, BlankFX:
+1. Freezes the relevant account (access tier set to suspended)
+2. Documents the activity and supporting evidence
+3. Files a Suspicious Activity Report (SAR) with the relevant financial intelligence unit
+4. Cooperates with law enforcement as required
+
+## Record keeping
+
+BlankFX maintains records of:
+- User registration and access tier assignments
+- All on-chain transactions (inherently preserved on the blockchain)
+- Monitoring alerts and their resolution
+- SARs filed and law enforcement requests received
+
+Records are retained for a minimum of 5 years after the end of the business relationship.
+
+## Training
+
+All team members with access to user data or compliance systems receive AML/CFT training at onboarding and annually thereafter.
+
+## Policy review
+
+This policy is reviewed at least annually and updated to reflect:
+- Changes in applicable regulations
+- New risks identified through monitoring
+- Guidance from regulators and industry bodies
+
+## Contact
+
+For compliance inquiries, contact the BlankFX compliance team through the channels listed on [blankfx.org](https://blankfx.org).

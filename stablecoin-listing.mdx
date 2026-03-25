@@ -5,119 +5,116 @@ description: Requirements and process for listing a new stablecoin on BlankFX.
 
 # Stablecoin listing guide
 
-BlankFX is designed to support any fiat-pegged stablecoin that meets our listing criteria. This guide describes what we evaluate, the due diligence process, and how to apply.
+BlankFX is designed to support multiple currency corridors. Each new stablecoin listed creates a new FX pair and expands the protocol's reach. This guide describes the requirements and due diligence process for adding a new stablecoin.
 
-## Why list on BlankFX?
+## Listing requirements
 
-Listing your stablecoin on BlankFX gives it:
-- **FX liquidity** — your stablecoin becomes tradeable against every other currency on the protocol
-- **Institutional access** — corporate treasuries and payment platforms can swap in and out
-- **Yield utility** — holders can deposit into the pool and earn from FX trading fees
-
-## Listing criteria
-
-We evaluate stablecoins across five dimensions. All five must pass before a listing proceeds.
-
-### 1. Regulatory and legal standing
+### 1. Regulatory and legal
 
 | Requirement | Detail |
 |-------------|--------|
-| Issuer jurisdiction | Must be domiciled in a jurisdiction with clear stablecoin regulation (e.g. EU under MiCA, US state-licensed, Singapore MAS-licensed) |
-| License or registration | Issuer must hold relevant e-money, payment, or stablecoin-specific license |
-| Legal entity | Must be a registered legal entity (not a DAO or anonymous team) |
-| Terms of service | Published terms covering holder rights, redemption, and liability |
+| Issuer jurisdiction | Issuer must be domiciled in a jurisdiction with clear stablecoin regulations (e.g. EU under MiCA, US state-licensed, Singapore MAS-licensed) |
+| License/registration | Issuer must hold relevant money transmission, e-money, or stablecoin-specific license |
+| Reserve attestation | Monthly or quarterly reserve reports from an independent auditor or accounting firm |
+| Legal opinion | Legal opinion confirming the token is not classified as a security in its primary jurisdiction |
+| Terms of service | Published terms covering redemption rights, liability, and user protections |
 
-### 2. Reserve backing and transparency
+### 2. Reserve quality
 
-| Requirement | Detail |
-|-------------|--------|
-| Reserve composition | Must be backed 1:1 (or greater) by cash, cash equivalents, or short-term government securities |
-| Attestation or audit | Monthly attestation by a reputable accounting firm (Big 4 preferred), or full audit |
-| Proof of reserves | On-chain proof of reserves preferred; off-chain attestation accepted with regular frequency |
-| Redemption guarantee | Issuer must offer direct redemption to fiat at par value |
+| Criterion | Minimum standard |
+|-----------|-----------------|
+| Reserve composition | 100% backed by cash, cash equivalents, or short-term government securities |
+| Custody | Reserves held at regulated financial institutions, segregated from issuer operating funds |
+| Audit frequency | At minimum quarterly attestation by a reputable accounting firm |
+| Redemption | 1:1 redemption available to verified holders within a reasonable timeframe (ideally T+0 to T+2) |
+| Transparency | Public disclosure of reserve composition, custodian identity, and attestation reports |
 
-### 3. Smart contract quality
+### 3. Technical
 
-| Requirement | Detail |
-|-------------|--------|
-| ERC-20 compliance | Standard ERC-20 interface on supported chains |
-| Audit | At least one audit by a recognized security firm (Trail of Bits, OpenZeppelin, Certora, Consensys Diligence, or equivalent) |
-| Upgrade mechanism | If upgradeable, must have timelock and multisig governance |
-| Blacklist/freeze | Acceptable if required by regulation, but must be documented |
-| Decimal precision | 6 or 18 decimals (6 preferred for FX) |
+| Criterion | Minimum standard |
+|-----------|-----------------|
+| ERC-20 compliance | Standard ERC-20 interface on Ethereum (or target chain) |
+| Contract verification | Source code verified on Etherscan or equivalent block explorer |
+| Audit | Smart contract audited by a recognized security firm |
+| Decimals | 6 or 18 decimals (must be consistent and documented) |
+| Pausability | If the contract has pause/freeze functionality, the governance process for triggering it must be documented |
+| Proxy pattern | If upgradeable, the upgrade governance and timelock must be documented |
+| Blacklist | If the contract has blacklist functionality, the policy for blacklisting addresses must be disclosed |
 
-### 4. Market presence
+### 4. Market and liquidity
 
-| Requirement | Detail |
-|-------------|--------|
-| Market cap | Minimum $10M circulating supply |
-| Chain deployment | Must be deployed on Ethereum mainnet or Base (BlankFX-supported chains) |
-| Liquidity | Must have existing secondary market liquidity (DEX or CEX) |
-| Track record | At least 6 months of stable peg maintenance (within 0.5% of par) |
-
-### 5. Operational readiness
-
-| Requirement | Detail |
-|-------------|--------|
-| Oracle feed | Chainlink or Pyth price feed available, or issuer willing to co-fund oracle deployment |
-| Technical contact | Named technical contact for integration support |
-| Incident response | Published incident response process for depeg events |
-| Insurance or reserve fund | Preferred: insurance coverage or protocol-level reserve for loss absorption |
+| Criterion | Minimum standard |
+|-----------|-----------------|
+| Market cap | Minimum $10M in circulation |
+| Exchange listings | Listed on at least 2 reputable centralized exchanges or DEXs |
+| On-chain liquidity | Existing DEX liquidity of at least $1M TVL |
+| Oracle feed | Price feed available from a recognized oracle provider (Chainlink, Pyth, Redstone) or reliable on-chain TWAP |
+| Trading history | At least 6 months of continuous trading activity |
 
 ## Due diligence process
 
-```mermaid
-graph TB
-    A[Application submitted] --> B[Initial screening<br/>1-2 weeks]
-    B --> C{Meets criteria?}
-    C -->|No| D[Feedback provided]
-    C -->|Yes| E[Deep due diligence<br/>2-4 weeks]
-    E --> F[Reserve verification]
-    E --> G[Contract audit review]
-    E --> H[Legal review]
-    F & G & H --> I{All clear?}
-    I -->|No| J[Remediation required]
-    I -->|Yes| K[Pool deployment<br/>+ oracle setup]
-    K --> L[Testnet integration<br/>1-2 weeks]
-    L --> M[Mainnet listing]
-    style A fill:#00E676,color:#000
-    style M fill:#00E676,color:#000
-```
+### Step 1: Application
 
-### Timeline
+The stablecoin issuer (or a sponsor) submits a listing proposal including:
+- Token details (name, symbol, address, decimals, chain)
+- Issuer identity and jurisdiction
+- License/registration documentation
+- Latest reserve attestation report
+- Smart contract audit report
+- Oracle feed details
 
-| Phase | Duration | What happens |
-|-------|----------|-------------|
-| Application | — | Submit the application form with required documentation |
-| Initial screening | 1-2 weeks | BlankFX team reviews against listing criteria |
-| Deep DD | 2-4 weeks | Reserve verification, contract review, legal assessment |
-| Integration | 1-2 weeks | Testnet deployment, oracle setup, pool configuration |
-| Listing | — | Mainnet pool goes live, announced to users |
+### Step 2: Technical review
 
-Total time from application to listing: approximately 4-8 weeks depending on documentation readiness.
+BlankFX team reviews:
+- Smart contract code and audit findings
+- ERC-20 compliance and edge cases (fee-on-transfer, rebasing, etc.)
+- Oracle feed reliability and update frequency
+- Pausability and admin key risks
 
-## Application
+### Step 3: Risk assessment
 
-To apply for listing, prepare the following and send to the BlankFX team:
+Evaluation of:
+- Reserve quality and custodian reputation
+- Regulatory risk in target jurisdictions
+- Concentration risk (single custodian, single bank, etc.)
+- Depeg history and incident response track record
+- Issuer financial health (if public information available)
 
-1. **Issuer overview** — Company name, jurisdiction, license details, team
-2. **Reserve documentation** — Latest attestation or audit report
-3. **Smart contract details** — Token address, audit report, upgrade mechanism documentation
-4. **Market data** — Current supply, peg history, existing exchange listings
-5. **Oracle availability** — Existing Chainlink/Pyth feeds or willingness to fund deployment
-6. **Technical contact** — Named person for integration support
+### Step 4: Pool configuration
 
-<Info>
-Contact the BlankFX team to start the listing process. We're actively seeking stablecoins for EUR, GBP, CHF, AUD, SGD, and AED corridors.
-</Info>
+If approved:
+- New FX Pool deployed for the currency
+- Oracle feed configured and tested
+- Spread parameters calibrated based on liquidity depth and volatility
+- Pool added to the Router whitelist
+- Frontend updated to show the new currency
 
-## Delisting criteria
+### Step 5: Liquidity bootstrapping
 
-A stablecoin may be delisted if:
-- Peg deviates more than 2% from par for more than 48 hours
-- Issuer loses regulatory license or enters insolvency
-- Smart contract exploit affecting token integrity
-- Reserve attestation lapses for more than 90 days
-- Issuer becomes non-responsive to security or operational queries
+Initial liquidity is seeded through:
+- Issuer partnership (issuer deposits initial liquidity)
+- LP incentive program (boosted fee share for early depositors)
+- Co-marketing with the issuer to attract depositors
 
-Delisting follows a 7-day notice period (except in emergency situations) to allow LPs to withdraw.
+## Stablecoins under evaluation
+
+| Currency | Token | Issuer | Status |
+|----------|-------|--------|--------|
+| CHF | CHFAU | TBD | Under evaluation |
+| GBP | GBPT | TBD | Under evaluation |
+| AUD | AUDAU | TBD | Research phase |
+| SGD | XSGD | StraitsX | Research phase |
+
+## Rejection criteria
+
+A stablecoin will not be listed if:
+- The issuer cannot provide reserve attestations from an independent auditor
+- The smart contract has unresolved critical or high-severity audit findings
+- The token has experienced a depeg exceeding 5% that was not resolved within 48 hours
+- The issuer is domiciled in a sanctioned jurisdiction
+- The token uses a fee-on-transfer or rebasing mechanism that is incompatible with BlankFX pool accounting
+- No reliable oracle feed exists for the underlying currency pair
+
+## Contact
+
+Stablecoin issuers interested in listing on BlankFX should contact the team through the channels listed on [blankfx.org](https://blankfx.org).
