@@ -3,18 +3,20 @@
   "theme": "mint",
   "name": "BlankFX Docs",
   "colors": {
-    "primary": "#00E676",
-    "light": "#00E676",
-    "dark": "#009B4E"
+    "primary": "#2563EB",
+    "light": "#3B82F6",
+    "dark": "#1D4ED8",
+    "background": {
+      "dark": "#0B0C0E",
+      "light": "#FFFFFF"
+    }
   },
   "favicon": "/favicon.png",
   "logo": {
     "light": "/logo/light.png",
     "dark": "/logo/dark.png"
   },
-  "appearance": {
-    "default": "dark"
-  },
+  "appearance": "light",
   "font": {
     "headings": {
       "family": "Space Grotesk",
