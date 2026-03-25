@@ -3,14 +3,27 @@
   "theme": "mint",
   "name": "BlankFX Docs",
   "colors": {
-    "primary": "#3B82F6",
-    "light": "#60A5FA",
-    "dark": "#2563EB"
+    "primary": "#00E676",
+    "light": "#00E676",
+    "dark": "#009B4E"
   },
   "favicon": "/favicon.png",
   "logo": {
     "light": "/logo/light.png",
     "dark": "/logo/dark.png"
+  },
+  "appearance": {
+    "default": "dark"
+  },
+  "font": {
+    "headings": {
+      "family": "Space Grotesk",
+      "weight": 700
+    },
+    "body": {
+      "family": "Inter",
+      "weight": 400
+    }
   },
   "navigation": {
     "groups": [
@@ -22,11 +35,25 @@
         ]
       },
       {
-        "group": "Using BlankFX",
+        "group": "How it works",
         "pages": [
-          "swaps",
+          "architecture",
+          "pricing-mechanism",
+          "swaps"
+        ]
+      },
+      {
+        "group": "Earn",
+        "pages": [
           "earn",
-          "fees"
+          "lp-guide"
+        ]
+      },
+      {
+        "group": "Integrations",
+        "pages": [
+          "rfq-api",
+          "stablecoin-listing"
         ]
       },
       {
@@ -34,6 +61,8 @@
         "pages": [
           "contracts",
           "tokens",
+          "fees",
+          "aml-policy",
           "faq"
         ]
       }

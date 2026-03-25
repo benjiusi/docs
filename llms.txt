@@ -10,6 +10,7 @@ BlankFX is a decentralized foreign exchange protocol on Ethereum. It enables sta
 - Gasless swaps: Users sign an EIP-712 message. A relay service submits the transaction and pays gas. Gas cost is embedded in the swap spread.
 - Single-sided liquidity: Deposit one stablecoin (e.g. just USDC) to earn yield. No token pairing required.
 - USD Hub model: All USD stablecoins share one pool. Cross-currency swaps route through the hub via oracle rates.
+- RFQ Brokerage: Large trades route to competing market makers for institutional-grade execution.
 
 ## Architecture
 
@@ -23,6 +24,7 @@ BlankFX is a decentralized foreign exchange protocol on Ethereum. It enables sta
 - USD-USD: Direct swap within the USD Hub (e.g. USDC to USDT). Near 1:1 rate.
 - Cross-currency: Routes through USD Hub and foreign pool via oracle rate (e.g. USDC to EURC).
 - Intra-pool: Swap between tokens in the same foreign pool.
+- RFQ: Large trades routed to market makers for competitive quotes.
 
 ## Earning yield
 
@@ -39,9 +41,17 @@ Live on Ethereum Sepolia (testnet). Mainnet and Base deployments planned.
 
 ## Documentation
 
+- Introduction: /introduction
 - Getting started: /getting-started
+- How it works: /architecture
+- Pricing mechanism: /pricing-mechanism
 - Swaps: /swaps
 - Earn: /earn
-- Fees: /fees
+- LP guide: /lp-guide
+- RFQ API: /rfq-api
+- Stablecoin listing: /stablecoin-listing
 - Contracts: /contracts
+- Tokens: /tokens
+- Fees: /fees
+- AML policy: /aml-policy
 - FAQ: /faq
