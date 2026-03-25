@@ -1,0 +1,109 @@
+---
+title: RFQ brokerage API
+description: Integrate with BlankFX's Request-for-Quote system for institutional-size trades.
+---
+
+# RFQ brokerage API
+
+## Overview
+
+The RFQ (Request-for-Quote) system is designed for institutional-size trades where pool-based execution isn't optimal. Instead of swapping against the pool directly, your trade request is sent to registered market makers who compete to offer the best price.
+
+This is the integration path for payment platforms, corporate treasuries, and any application moving significant FX volume through BlankFX.
+
+## How it works
+
+![RFQ flow](https://raw.githubusercontent.com/benjiusi/docs/main/images/rfq-flow.svg)
+
+## API endpoints
+
+<Note>
+The RFQ API is currently in development. Endpoints and parameters are subject to change. Contact the team for early access.
+</Note>
+
+### Request a quote
+
+```bash
+POST /api/rfq/quote
+Content-Type: application/json
+
+{
+  "tokenIn": "0x...",      # Token you're selling
+  "tokenOut": "0x...",     # Token you're buying
+  "amountIn": "1000000",   # Amount in native decimals
+  "deadline": 1711310400   # Quote validity (unix timestamp)
+}
+```
+
+**Response:**
+
+```json
+{
+  "quoteId": "q_abc123",
+  "tokenIn": "0x...",
+  "tokenOut": "0x...",
+  "amountIn": "1000000",
+  "amountOut": "920000",
+  "rate": "0.9200",
+  "expiresAt": 1711310400,
+  "maker": "0x..."
+}
+```
+
+### Execute a quote
+
+```bash
+POST /api/rfq/execute
+Content-Type: application/json
+
+{
+  "quoteId": "q_abc123",
+  "signature": "0x..."    # EIP-712 signature from the taker
+}
+```
+
+**Response:**
+
+```json
+{
+  "txHash": "0x...",
+  "status": "submitted"
+}
+```
+
+### Check trade status
+
+```bash
+GET /api/rfq/status/{quoteId}
+```
+
+## Authentication
+
+API access requires an API key tied to a registered BlankFX account with an appropriate access tier. Contact the team to request API credentials.
+
+## Rate limits
+
+| Tier | Quotes/min | Executions/min |
+|------|-----------|----------------|
+| Standard | 30 | 10 |
+| Premium | 120 | 60 |
+
+## When to use RFQ vs pool swaps
+
+| | Pool swap | RFQ |
+|---|----------|-----|
+| Best for | Trades under $50K | Trades over $50K |
+| Execution | Instant, atomic | Seconds (quote + execute) |
+| Pricing | Oracle + spread | Market maker competition |
+| Integration | Wallet or frontend SDK | API |
+| Gas | Gasless available | Gasless available |
+
+For most payment platform integrations, the RFQ path offers better pricing on larger trades because market makers compete on spread.
+
+## Integration checklist
+
+1. Request API credentials from the BlankFX team
+2. Implement the quote → execute flow
+3. Handle quote expiration (re-request if expired)
+4. Set up webhook for settlement confirmation (optional)
+5. Test on Sepolia before going live

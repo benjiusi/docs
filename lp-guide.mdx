@@ -1,0 +1,85 @@
+---
+title: LP guide — How to earn
+description: Step-by-step guide to providing liquidity on BlankFX and earning from FX trading fees.
+---
+
+# LP guide — How to earn
+
+## Why provide liquidity?
+
+BlankFX needs stablecoin deposits to execute FX swaps. In return for providing that liquidity, you earn a share of every trading fee. This is real yield from real trading volume — not token emissions or inflationary rewards.
+
+## Step-by-step: Depositing
+
+### 1. Go to the Earn page
+
+Navigate to [blankfx.org](https://blankfx.org) and click **Earn** in the navigation.
+
+### 2. Choose a pool
+
+| Pool | Accepts | Earns from |
+|------|---------|------------|
+| USD Pool | USDC, USDT, RLUSD | All swaps (USD ↔ USD + cross-currency) |
+| EUR Pool | EURC | EUR-related swaps |
+
+The USD Pool earns from every trade on the protocol because all cross-currency swaps route through the USD Hub. This makes it the broadest yield source.
+
+### 3. Click Supply
+
+Select the token you want to deposit and enter the amount.
+
+**First time only:** You'll need to approve the token for the pool contract. This is a one-time on-chain transaction.
+
+### 4. Confirm the deposit
+
+Review the preview showing how many receipt tokens you'll receive, then confirm. After the transaction completes, you're earning.
+
+## How yield accrues
+
+When you deposit, you receive receipt tokens (e.g. BFX-USD for the USD Pool). These represent your share of the pool.
+
+As trading fees flow into the pool, the exchange rate between your receipt tokens and the underlying stablecoin increases. You don't need to do anything — yield is automatic.
+
+**Example timeline:**
+- Day 0: Deposit 10,000 USDC → receive 10,000 BFX-USD (rate: 1.0000)
+- Day 30: Rate rises to 1.0040 → your 10,000 BFX-USD is worth 10,040 USDC
+- Day 90: Rate rises to 1.0120 → your 10,000 BFX-USD is worth 10,120 USDC
+
+Your token balance never changes. The value per token increases as fees accumulate.
+
+## Withdrawing
+
+1. Go to the Earn page and click on your active position
+2. Switch to the **Withdraw** tab
+3. Enter how many receipt tokens to redeem
+4. Select the output token (e.g. USDC)
+5. Confirm the withdrawal
+
+**Cooldown:** There is a 5-minute cooldown after depositing before you can withdraw. After that, withdrawals are instant with no penalties.
+
+**No lock-ups.** No withdrawal fees. No vesting periods.
+
+## What determines APY?
+
+Your yield depends on:
+- **Trading volume** — More swaps = more fees = higher APY
+- **Pool size** — Your share of the pool determines your share of fees
+- **Spread** — Wider spreads (e.g. cross-currency) generate more fee revenue per swap
+
+APY is variable and changes with trading activity. The Earn page shows current estimated APY based on recent fee data.
+
+## Risks
+
+**Smart contract risk.** Funds are held in smart contracts. A bug could put deposits at risk. Contracts will be audited before mainnet.
+
+**Oracle risk.** If an oracle feed reports a wrong rate, it could cause the pool to give away more than it should. Safety bounds limit the impact, but the risk exists.
+
+**Utilization risk.** In extreme cases, if most of the pool's liquidity is actively locked in swaps, your withdrawal might be delayed until liquidity frees up.
+
+**No impermanent loss.** Unlike AMM LPs, BlankFX LPs do not face impermanent loss because pricing comes from oracles, not pool ratios. Your deposit value should only go up (from fees), not down from price divergence.
+
+## Tips for LPs
+
+- **USD Pool is the safe default.** It earns from all trading activity and holds familiar stablecoins.
+- **Monitor APY.** If trading volume drops, APY drops. Consider reallocating if another pool offers better returns.
+- **Start small.** Test with a small deposit first to understand the flow before committing larger amounts.

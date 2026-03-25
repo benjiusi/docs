@@ -13,12 +13,84 @@
     "dark": "https://raw.githubusercontent.com/benjiusi/docs/main/logo/dark.png"
   },
   "appearance": "light",
+  "font": {
+    "headings": {
+      "family": "Space Grotesk",
+      "weight": 700
+    },
+    "body": {
+      "family": "Inter",
+      "weight": 400
+    }
+  },
   "navigation": {
     "groups": [
       {
-        "group": "",
-        "pages": ["index"]
+        "group": "Getting started",
+        "pages": [
+          "introduction",
+          "getting-started"
+        ]
+      },
+      {
+        "group": "How it works",
+        "pages": [
+          "architecture",
+          "pricing-mechanism",
+          "swaps"
+        ]
+      },
+      {
+        "group": "Earn",
+        "pages": [
+          "earn",
+          "lp-guide"
+        ]
+      },
+      {
+        "group": "Integrations",
+        "pages": [
+          "rfq-api",
+          "stablecoin-listing"
+        ]
+      },
+      {
+        "group": "Reference",
+        "pages": [
+          "contracts",
+          "tokens",
+          "fees",
+          "aml-policy",
+          "faq"
+        ]
       }
-    ]
+    ],
+    "global": {
+      "anchors": [
+        {
+          "anchor": "GitHub",
+          "href": "https://github.com/benjiusi/blankfx",
+          "icon": "github"
+        }
+      ]
+    }
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "App",
+        "href": "https://blankfx.org"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Launch App",
+      "href": "https://blankfx.org"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/benjiusi/blankfx"
+    }
   }
 }
