@@ -13,33 +13,28 @@
     "dark": "/logo/dark.png"
   },
   "navigation": {
-    "tabs": [
+    "groups": [
       {
-        "tab": "Guides",
-        "groups": [
-          {
-            "group": "Getting started",
-            "pages": [
-              "introduction",
-              "getting-started"
-            ]
-          },
-          {
-            "group": "Using BlankFX",
-            "pages": [
-              "swaps",
-              "earn",
-              "fees"
-            ]
-          },
-          {
-            "group": "Reference",
-            "pages": [
-              "contracts",
-              "tokens",
-              "faq"
-            ]
-          }
+        "group": "Getting started",
+        "pages": [
+          "introduction",
+          "getting-started"
+        ]
+      },
+      {
+        "group": "Using BlankFX",
+        "pages": [
+          "swaps",
+          "earn",
+          "fees"
+        ]
+      },
+      {
+        "group": "Reference",
+        "pages": [
+          "contracts",
+          "tokens",
+          "faq"
         ]
       }
     ],
