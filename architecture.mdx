@@ -9,19 +9,7 @@ BlankFX is a purpose-built FX protocol. Unlike general-purpose DEXs that treat e
 
 ## The two-layer model
 
-```
-                    ┌─────────────────────┐
-                    │   BlankFX Router     │
-                    │   (swap entry point) │
-                    └──────────┬──────────┘
-                               │
-              ┌────────────────┼────────────────┐
-              │                │                │
-     ┌────────▼────────┐  ┌───▼────┐   ┌───────▼───────┐
-     │    USD Hub       │  │EUR Pool│   │  Future Pools  │
-     │ USDC·USDT·RLUSD │  │  EURC  │   │  CHF·GBP·...  │
-     └─────────────────┘  └────────┘   └───────────────┘
-```
+<img src="/images/architecture.svg" alt="BlankFX Architecture — Router, USD Hub, FX Pools, Oracle, Access Control" />
 
 **Layer 1 — USD Hub:** Holds all USD-denominated stablecoins (USDC, USDT, RLUSD) in a single pool. Swaps between USD stablecoins happen here at near 1:1 rates.
 
@@ -53,15 +41,7 @@ This means:
 
 ## Settlement flow
 
-```
-1. You submit a swap (or sign a gasless order)
-2. Router checks your access tier
-3. Router reads the oracle rate for the currency pair
-4. Router calculates output amount minus spread
-5. Your input tokens move to the source pool
-6. Output tokens move from the destination pool to your wallet
-7. Done — single transaction, single block
-```
+<img src="/images/settlement-flow.svg" alt="BlankFX settlement flow — from swap to settlement in a single block" />
 
 Settlement is final the moment the transaction confirms. No pending states, no clearing period.
 

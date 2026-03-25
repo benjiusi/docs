@@ -13,30 +13,7 @@ This is the integration path for payment platforms, corporate treasuries, and an
 
 ## How it works
 
-```
-Your Application          BlankFX RFQ Service         Market Makers
-      │                          │                         │
-      │  1. POST /rfq/quote      │                         │
-      │  (pair, amount, side)    │                         │
-      │ ────────────────────────►│                         │
-      │                          │  2. Broadcast RFQ       │
-      │                          │ ────────────────────────►│
-      │                          │                         │
-      │                          │  3. Quotes returned     │
-      │                          │ ◄────────────────────────│
-      │                          │                         │
-      │  4. Best quote returned  │                         │
-      │ ◄────────────────────────│                         │
-      │                          │                         │
-      │  5. POST /rfq/execute    │                         │
-      │  (quoteId, signature)    │                         │
-      │ ────────────────────────►│                         │
-      │                          │  6. Settlement on-chain │
-      │                          │ ─────────────────►      │
-      │                          │                         │
-      │  7. Confirmation         │                         │
-      │ ◄────────────────────────│                         │
-```
+<img src="/images/rfq-flow.svg" alt="RFQ brokerage flow — request, broadcast, compete, execute, settle" />
 
 ## API endpoints
 
