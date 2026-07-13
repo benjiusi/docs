@@ -1,0 +1,64 @@
+---
+title: API overview
+description: Programmatic, non-custodial access to BlankFX — read your account, move money, and trade FX.
+---
+
+# BlankFX Public API
+
+Programmatic, **non-custodial** access to BlankFX. Read your account, move money, and trade FX across two rails — the **AMM** (gasless Permit2 relay) and **RFQ** (market-maker-backed escrow).
+
+BlankFX never holds your keys. Every value operation returns EIP-712 typed-data that **you** sign with your own registered wallet. We store only your public key.
+
+## Base URL
+
+<Info>
+The stable public host `https://api.blankfx.org/v1` is being provisioned as part of Phase 2. **Today**, the API is live on the sandbox host below — use it for all integration work.
+</Info>
+
+| | |
+|---|---|
+| **Sandbox (live today)** | `https://blankfx-contacts.fly.dev/public/v1` |
+| **Stable host (Phase 2)** | `https://api.blankfx.org/v1` |
+| **OpenAPI 3.1 spec** | [`/openapi.json`](https://blankfx-contacts.fly.dev/public/v1/openapi.json) |
+
+Phase 1 issues `bfx_test_` keys only, running against the **Sepolia** sandbox. `bfx_live_` keys are gated behind Phase-2 hardening plus a security review.
+
+## Get started
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="key" href="/api-reference/authentication">
+    Create a key and sign every request with Ed25519.
+  </Card>
+  <Card title="Errors & limits" icon="triangle-exclamation" href="/api-reference/errors">
+    Error shape, idempotency, and rate limits.
+  </Card>
+  <Card title="FX trading" icon="arrows-rotate" href="/api-reference/fx-flow">
+    The non-custodial quote → accept → sign → submit flow.
+  </Card>
+  <Card title="Transfers" icon="paper-plane" href="/api-reference/transfers">
+    Cross-currency and same-currency sends.
+  </Card>
+  <Card title="Webhooks" icon="bell" href="/api-reference/webhooks">
+    Subscribe to settlement and payment events.
+  </Card>
+</CardGroup>
+
+<Note>
+The full **endpoint reference** — all 27 endpoints across Account, FX, Transfers, Payment links, Wallets, Contacts, and Webhooks — is generated from the OpenAPI spec and listed under **Endpoints** in the sidebar.
+</Note>
+
+## Scopes
+
+Every key is minted with an explicit set of scopes. A call missing the required scope returns `403 insufficient_scope`.
+
+| Scope | Grants |
+|---|---|
+| `read` | account, balances, wallets, rates, transactions, payment-link reads, exports |
+| `trade` | FX quotes / accept / order submit + read (`/fx/*`) |
+| `pay` | transfers, payment-link create/cancel, contacts |
+| `wallets` | programmatic signer-wallet register/manage (`/wallets*`) |
+| `webhooks` | webhook endpoint management |
+
+---
+
+*Non-custodial by design: BlankFX stores only your public key and never holds your signing keys or funds. Every value movement happens under a signature you produce locally.*

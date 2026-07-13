@@ -59,6 +59,31 @@
             ]
           }
         ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Get started",
+            "pages": [
+              "api-reference/overview",
+              "api-reference/authentication",
+              "api-reference/errors"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "api-reference/fx-flow",
+              "api-reference/transfers",
+              "api-reference/webhooks"
+            ]
+          },
+          {
+            "group": "Endpoints",
+            "openapi": "api-reference/openapi.json"
+          }
+        ]
       }
     ],
     "global": {

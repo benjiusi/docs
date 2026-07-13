@@ -1,0 +1,86 @@
+---
+title: Authentication
+description: Create an API key and sign every request with your Ed25519 private key.
+---
+
+# Authentication
+
+There is no bearer token. Every request is signed with your **Ed25519 private key**. BlankFX stores only your public key, so there is no shared secret that can leak from our side.
+
+## 1. Create an API key
+
+<Steps>
+  <Step title="Open the app">
+    Go to **Settings → API keys → Create**.
+  </Step>
+  <Step title="Choose scopes">
+    Pick the [scopes](/api-reference/overview#scopes) your integration needs.
+  </Step>
+  <Step title="Save the private key">
+    Your Ed25519 keypair is generated **in your browser** — only the **public** key is sent to BlankFX. The **private key (PKCS8 PEM) is shown exactly once**. Store it in your secrets manager.
+  </Step>
+</Steps>
+
+You receive a `key_id` (e.g. `bfx_test_ab12…`). That, plus your private key, is all you need to sign.
+
+## 2. Sign every request
+
+Build the **canonical string** (LF-separated, no trailing newline):
+
+```
+${timestamp}\n${METHOD}\n${requestTarget}\n${sha256_hex(body)}
+```
+
+<ParamField path="timestamp" type="string">
+  Unix **seconds**, within **±30s** of server time.
+</ParamField>
+<ParamField path="METHOD" type="string">
+  Upper-case HTTP method.
+</ParamField>
+<ParamField path="requestTarget" type="string">
+  The path **including any query string** (e.g. `/public/v1/fx/orders?limit=10`).
+</ParamField>
+<ParamField path="sha256_hex(body)" type="string">
+  Hex SHA-256 of the raw request body. Use `sha256_hex("")` for GET / no body.
+</ParamField>
+
+Send three headers:
+
+| Header | Value |
+|---|---|
+| `BFX-API-KEY` | `<key_id>` |
+| `BFX-TIMESTAMP` | `<same unix seconds>` |
+| `BFX-SIGNATURE` | `base64( Ed25519_sign(privateKey, canonicalString) )` |
+
+<Warning>
+**Freshness + replay.** Each signature is single-use. Re-sending an identical signed request is rejected (`replayed`). Always sign retries — even idempotent ones — with a **fresh timestamp**.
+</Warning>
+
+## Node example
+
+```js
+import crypto from 'node:crypto';
+import fs from 'node:fs';
+
+const BASE = 'https://blankfx-contacts.fly.dev/public/v1'; // sandbox host (live today)
+const KEY_ID = process.env.BFX_KEY_ID;
+const privateKey = crypto.createPrivateKey(fs.readFileSync('key.pem')); // PKCS8 PEM shown once
+
+async function call(method, path, body) {
+  const raw = body ? JSON.stringify(body) : '';
+  const ts = Math.floor(Date.now() / 1000).toString();
+  const bodyHash = crypto.createHash('sha256').update(raw).digest('hex');
+  const canonical = `${ts}\n${method.toUpperCase()}\n${path}\n${bodyHash}`;
+  const sig = crypto.sign(null, Buffer.from(canonical), privateKey).toString('base64');
+  const headers = { 'BFX-API-KEY': KEY_ID, 'BFX-TIMESTAMP': ts, 'BFX-SIGNATURE': sig };
+  if (raw) headers['content-type'] = 'application/json';
+  const res = await fetch(BASE + path.replace('/public/v1', ''), { method, headers, body: raw || undefined });
+  return { status: res.status, body: await res.json() };
+}
+
+console.log(await call('GET', '/public/v1/whoami'));
+```
+
+<Note>
+The signed `requestTarget` must exactly equal the path the server receives. Against the sandbox host sign `/public/v1/...`; against `api.blankfx.org/v1` sign `/v1/...`. **Sign the path you send.**
+</Note>

@@ -1,0 +1,46 @@
+---
+title: Errors, idempotency & rate limits
+description: One error shape, safe retries, and per-key rate limits.
+---
+
+# Errors, idempotency & rate limits
+
+## Errors
+
+Every error shares one shape:
+
+```json
+{ "error": { "code": "<slug>", "message": "..." } }
+```
+
+Match on `error.code` (a stable slug), not the human-readable `message`.
+
+| Status | Common codes |
+|---|---|
+| `400` | `unsupported_asset`, `invalid_request` |
+| `401` | `invalid_signature`, `stale_timestamp`, `replayed` |
+| `403` | `insufficient_scope`, source-wallet not permitted |
+| `404` | `not_found` |
+| `429` | `rate_limited` |
+
+## Idempotency
+
+`POST` / `PATCH` accept an `Idempotency-Key` header. Replaying the same key on the same route within **24h** returns the original response with `Idempotency-Replayed: true`.
+
+<Tip>
+Pair idempotency keys with fresh request signatures: the signature must always be fresh (replay-protected), but the `Idempotency-Key` is what makes the *operation* safe to retry.
+</Tip>
+
+## Rate limits
+
+Limits are per key. Exceeding one returns `429`.
+
+| Bucket | Limit |
+|---|---|
+| Reads | 600 / min |
+| Writes | 120 / min |
+| Heaviest trade ops | 30 / min |
+
+<Note>
+Per-account rate tiers are a Phase-2 item. Phase 1 applies these flat defaults to every key.
+</Note>

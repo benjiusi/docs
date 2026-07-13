@@ -1,0 +1,28 @@
+---
+title: Transfers
+description: Cross-currency and same-currency sends, both non-custodial.
+---
+
+# Transfers
+
+`POST /transfers` with `{ from_currency, currency, amount, recipient }`. The rail is chosen by whether the currencies differ.
+
+## Cross-currency
+
+`from_currency ≠ currency` → one **atomic swap** delivered straight to the payee (e.g. pay EUR from a USD balance).
+
+Returns a `permit2_witness` signing payload. Sign it and `POST /transfers/{id}/submit { signature }` → the relayer broadcasts.
+
+States: `created → awaiting_signature → broadcasting → confirmed` (or `failed`).
+
+## Same-currency
+
+Same token → non-custodial **self-broadcast**. The response returns transfer `instructions` (token, from, to, amount). You sign and broadcast a standard ERC-20 transfer, then `POST /transfers/{id}/submit { tx_hash }` and BlankFX verifies the on-chain `Transfer` event before marking it `confirmed`.
+
+<Note>
+Same-token sends are self-broadcast by design (the relay router rejects same-token gasless routes). A gasless same-token rail is a possible future (v2) atomic relay-transfer contract, audit-gated.
+</Note>
+
+## Reading transfers
+
+`GET /transfers` and `GET /transfers/{id}` are account-scoped to the calling key.

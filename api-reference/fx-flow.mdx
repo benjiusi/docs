@@ -1,0 +1,67 @@
+---
+title: FX trading
+description: The non-custodial quote → accept → sign → submit flow across the AMM and RFQ rails.
+---
+
+# FX trading
+
+FX runs across two rails behind one flow: the **AMM** (indicative quotes, gasless Permit2 relay) and **RFQ** (firm market-maker quotes, on-chain escrow). Both are non-custodial — you sign the value operation yourself.
+
+<Info>
+**Supported assets are environment-specific.** Call `GET /currencies` for the live set. Sepolia currently serves e.g. `USDC`, `USDT`, `EURC`; symbols like `EURx` are **not** valid and return `400 unsupported_asset`. The examples below use `USDC → EURC`.
+</Info>
+
+<Warning>
+**Signer + permissions.** Value ops are signed by one of your **registered signer wallets** — your primary by default; pass `source_wallet` to target a specific one. The account must be permitted (KYC / launch-access) for the action, or the op is refused fail-closed with `403 "Source wallet is not permitted for swap|pay"`. Register a signer first via `POST /wallets`.
+</Warning>
+
+## The flow
+
+```
+POST /fx/quotes             → indicative AMM + firm RFQ quotes for a pair
+POST /fx/quotes/{id}/accept → locks the quote, creates an order, returns EIP-712 to sign
+POST /fx/orders/{id}/submit → { signature }  (AMM: relayer broadcasts your signed Permit2 order)
+                              or { tx_hash }  (RFQ: you broadcast the escrow-funding tx; we verify it)
+GET  /fx/orders/{id}        → poll to `settled`
+```
+
+Order states: `quoted → accepted → awaiting_funding → funded → settling → settled` (or `failed / expired / refunded`). `route` is `"amm"` or `"rfq"`; RFQ quotes are firm, AMM quotes indicative.
+
+## AMM — gasless relay
+
+The accept response returns a `permit2_witness` payload:
+
+```json
+{
+  "order_id": "…",
+  "route": "amm",
+  "state": "accepted",
+  "signing": {
+    "type": "permit2_witness",
+    "order": { "signer": "0x…", "tokenIn": "0x…", "tokenOut": "0x…", "amountIn": "…", "minAmountOut": "…", "recipient": "0x…", "pool": "0x…", "deadline": "…", "nonce": "…" },
+    "relay": { "chainId": 11155111, "permit2": "0x…", "relayRouter": "0x…", "witnessTypeString": "GaslessOrder witness)GaslessOrder(...)" }
+  }
+}
+```
+
+Sign the `order` as a Permit2 `PermitWitnessTransferFrom` using `witnessTypeString`, then `POST /fx/orders/{id}/submit { signature }`. The relayer only broadcasts your signed order — it cannot move funds without your signature, and the on-chain contract rejects a signature that doesn't match the exact order.
+
+## RFQ — self-broadcast escrow funding
+
+RFQ differs at the submit step: **you** broadcast the escrow-funding transaction (the MM settles against it), then post its `tx_hash`. The accept response's `signing.funding` carries everything you need.
+
+<Steps>
+  <Step title="Sign the Permit2 witness">
+    Sign a Permit2 `PermitWitnessTransferFrom` with your registered signer (`= quote.taker`), same Permit2 domain as the AMM path, witness type `RfqEscrowFunding(address signer,bytes32 executionId,address escrow,bytes32 quoteHash,address token,uint256 amount,uint256 deadline,uint256 nonce)`.
+  </Step>
+  <Step title="Broadcast the funding tx yourself">
+    Call `escrowQuoteWithPermit2(quote, providerSignature, funding, permit2Signature)` on `funding.escrow`. This tx costs you gas — RFQ funding is not relayed.
+  </Step>
+  <Step title="Submit the tx hash">
+    `POST /fx/orders/{id}/submit { "tx_hash": "0x…" }` — the backend verifies the on-chain `QuoteEscrowed` event before advancing to `funded → settled`.
+  </Step>
+</Steps>
+
+<Note>
+The `RfqEscrowFunding` field order must match `witnessTypeString` exactly, or the escrow rejects the signature.
+</Note>

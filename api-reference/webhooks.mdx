@@ -1,0 +1,37 @@
+---
+title: Webhooks
+description: Subscribe to settlement and payment events, verified with a per-endpoint HMAC secret.
+---
+
+# Webhooks
+
+Register endpoints (scope `webhooks`) to receive events as they happen.
+
+## Events
+
+| Event | Fires when |
+|---|---|
+| `payment_link.paid` | a payment link is paid |
+| `fx.order.settled` / `.failed` / `.refunded` | an FX order reaches a terminal state |
+| `transfer.confirmed` / `.failed` | a transfer reaches a terminal state |
+
+## Delivery & verification
+
+Each delivery is **HMAC-signed with a per-endpoint secret shown once** at registration. Verify the signature before trusting the payload.
+
+<Warning>
+Registration URLs must be **HTTPS** and are SSRF-screened. An endpoint that fails delivery repeatedly is auto-disabled.
+</Warning>
+
+## Managing endpoints
+
+```
+POST   /webhooks           → register (returns the signing secret once)
+GET    /webhooks           → list your endpoints
+POST   /webhooks/{id}/test → send a test delivery
+DELETE /webhooks/{id}      → remove an endpoint
+```
+
+<Note>
+`WEBHOOK_ENC_KEY` must be configured on the backend for webhook creation to succeed — per-endpoint secrets are encrypted at rest.
+</Note>
