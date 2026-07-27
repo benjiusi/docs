@@ -1,0 +1,108 @@
+---
+title: Broker & Market-Maker Onboarding
+description: What we need to onboard your firm as a liquidity provider or API trader on BlankFX.
+---
+
+# Broker & Market-Maker Onboarding
+
+To trade on BlankFX — providing RFQ liquidity or trading over the API — your firm goes through a one-time onboarding review. This page is the complete list of what we need; send it all in one package and we'll come back with anything missing rather than drip-feeding requests.
+
+This is standard institutional-crypto onboarding (KYB), sized for a firm our stage can actually turn around quickly, not a bank's compliance program.
+
+<Info>
+  **How much we ask depends on how you settle.** Most BlankFX flows settle on-chain and atomically — where that's true, our exposure to your firm is small and the checklist stays light. Delayed-settlement or credit-bearing flows carry real counterparty exposure, which is why the financial section below only applies to those.
+</Info>
+
+---
+
+## What to send
+
+### Corporate (KYB)
+
+| Item | Notes |
+|---|---|
+| Certificate of incorporation + registry extract | Recent |
+| Constitutional document | Memorandum/articles or local equivalent |
+| Ownership chart to UBOs ≥ 25% | Plus ID for each owner and director |
+| Proof of registered/operating address | Recent |
+| Authorized signatory evidence | Board resolution or equivalent naming who may bind the firm for trading |
+
+### Regulatory & compliance
+
+| Item | Notes |
+|---|---|
+| Licenses/registrations | Where your activity requires one — or a signed statement that none is required, naming the jurisdiction |
+| AML confirmation | Confirmation you run an AML program appropriate to your business + your compliance contact. Firms trading only their own capital: a short statement of that fact is enough |
+| Sanctions declaration | No ownership/control by sanctioned persons, no operations in comprehensively sanctioned jurisdictions, consent to ongoing screening |
+| Litigation & enforcement | Anything material in the past 5 years, or a statement that there is none |
+
+### Financial — delayed-settlement / credit-bearing flows only
+
+<Tabs>
+  <Tab title="Atomic settlement">
+    If you only trade atomically-settled flows, skip this section entirely — we set a conservative default exposure cap instead.
+  </Tab>
+  <Tab title="Delayed settlement">
+    | Item | Notes |
+    |---|---|
+    | Latest financial statements | Audited if available; management accounts are fine for younger firms |
+    | Source of trading capital | Short statement — own capital, investor capital, or borrowings |
+    | Capital adequacy | Confirmation of unencumbered capital comfortably above your requested exposure cap |
+  </Tab>
+</Tabs>
+
+### Operational & technical
+
+| Item | Notes |
+|---|---|
+| Settlement wallet address(es) | Each proven by signing a challenge message we provide |
+| Named traders & key custodians | Who holds the API keys; keys are per-firm, never shared with sub-clients |
+| Key management description | Where API/private keys live — HSM, MPC custodian, encrypted store |
+| Ops & incident contacts | Trading-hours contact; 24/7 contact required for delayed-settlement flows |
+| Expected activity profile | Pairs, typical clip sizes, expected daily volume — calibrates your limits, not a commitment |
+
+### Agreements
+
+| Item | Notes |
+|---|---|
+| Signed liquidity-provider / trading agreement | Incorporates our API Terms and Prohibited Use Schedule |
+| Fee/spread schedule acknowledgment | Countersigned term sheet |
+
+<Info>
+  **What we don't ask for:** bank references, notarized/apostilled documents (plain copies + a video call if we have identity doubts), proof-of-reserves of your firm, exclusivity, or volume minimums to get onboarded.
+</Info>
+
+---
+
+## What happens after you submit
+
+<Steps>
+  <Step title="Submit your package">
+    Send everything above in one email, noting whether you expect atomic or delayed-settlement flows.
+  </Step>
+  <Step title="Independent verification">
+    Registry lookup of your entity, sanctions/adverse-media screening, on-chain history of your settlement wallets, and a license check against the relevant regulator's public register.
+  </Step>
+  <Step title="Test trade">
+    A small supervised test trade before we raise your limits.
+  </Step>
+  <Step title="Decision">
+    Roughly 1–2 weeks from a complete package; longer for firms needing enhanced review.
+  </Step>
+</Steps>
+
+---
+
+## After you're onboarded
+
+- Tell us **before** settling from a new wallet — unannounced addresses are rejected, not investigated after the fact.
+- Notify us promptly of: a change of control or beneficial owners, loss of a relevant license, regulatory action against you, a key compromise, or insolvency events.
+- We re-screen registry and sanctions status annually, and do a full refresh every couple of years.
+
+---
+
+## Get started
+
+Send your package to **trading@blankfx.org**. Include a single point of contact and whether you expect atomic or delayed-settlement flows.
+
+See also: [Stablecoin Listing Requirements](/listing-requirements) if you're looking to list a token rather than trade on BlankFX, or [Compliance & KYC](/compliance) for end-user verification.
