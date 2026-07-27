@@ -1,0 +1,108 @@
+---
+title: Stablecoin Listing Requirements
+description: What we need from an issuer before listing a token on BlankFX.
+---
+
+# Stablecoin Listing Requirements
+
+BlankFX lists stablecoins into its FX pools and RFQ venue after a due-diligence review. This page is the complete list of what we need from you — send everything in one package and we'll tell you within a few business days if anything's missing.
+
+We're a small, non-custodial FX venue, not a bank compliance department. We ask for what actually changes the listing decision, and if you've already published something (most credible issuers publish attestations, audits, and contract addresses), a link is enough — we verify it ourselves either way.
+
+---
+
+## Before you start: fast-track tiers
+
+<CardGroup cols={3}>
+  <Card title="Established issuers" icon="building-columns">
+    Large, publicly regulated issuers with a running transparency program. Expedited review, largely from your published materials.
+  </Card>
+  <Card title="Regulated regional issuers" icon="scale-balanced">
+    Licensed but smaller-scale — the typical profile for the regional-currency stablecoins BlankFX exists to support. Standard review, full checklist below.
+  </Card>
+  <Card title="Everything else" icon="triangle-exclamation">
+    Unregulated or opaque issuers get enhanced review. Algorithmic / endogenously-collateralized designs are out of scope for us today.
+  </Card>
+</CardGroup>
+
+Reach out first and we'll confirm which tier applies before you assemble the package.
+
+---
+
+## What to send
+
+### Corporate & regulatory
+
+| Item | Notes |
+|---|---|
+| Certificate of incorporation or registry extract | — |
+| Regulatory basis you issue under | License, e-money/EMT authorization, trust charter — or, if genuinely unlicensed, a short statement of your legal basis |
+| Ownership summary | Beneficial owners ≥ 25% and directors |
+| Named contacts | Compliance contact + a technical/incident contact reachable within 24 hours |
+
+### Reserves & redemption
+
+| Item | Notes |
+|---|---|
+| Independent reserve attestations | Monthly cadence expected; most recent report no older than ~2 months at review. Full audits welcome, attestations are our baseline |
+| Reserve composition | Asset classes, custodian/bank names, jurisdictions |
+| Redemption terms | Who can redeem directly, minimums, fees, timelines, and any suspension/gating rights you hold |
+| Peg history disclosure | Any material deviation in the past 24 months, with cause and resolution |
+
+### Token & technical
+
+| Item | Notes |
+|---|---|
+| Official contract addresses | Per chain, sourced from your own domain or a signed message — we won't list from an unofficial source |
+| Native vs. bridged | For each chain: native issuance or bridged, and which bridge |
+| Smart-contract audit report(s) | For the deployed contracts, including any proxy |
+| Control disclosure | Is the contract upgradeable and who holds admin; who can mint/burn; is there a freeze/blacklist/pause power and under what policy; what protects those keys (multisig threshold, MPC, HSM) |
+
+### Compliance
+
+| Item | Notes |
+|---|---|
+| AML/CFT program summary | Who runs it, in a page or two |
+| Sanctions statement | Screening on your direct customers + your freeze-cooperation policy |
+| Restricted jurisdictions | Your own list |
+| Litigation & enforcement | Anything material in the past 5 years, or a statement that there is none |
+
+<Info>
+  **What we don't ask for:** a full AML manual, on-site visits, a SOC 2 report, notarized or apostilled documents, or exclusivity commitments.
+</Info>
+
+---
+
+## What happens after you submit
+
+<Steps>
+  <Step title="Submit your package">
+    Send everything above in one email. We confirm receipt and your assigned tier.
+  </Step>
+  <Step title="Independent verification">
+    We check your submission against public sources — on-chain data, registries, published attestations, market data. Inconsistencies between what's submitted and what we find cost more time than being upfront.
+  </Step>
+  <Step title="Decision">
+    Fast-track issuers: a few business days. Standard review with a complete package: up to a few weeks.
+  </Step>
+</Steps>
+
+Listing means a token passed this review at a point in time — it isn't investment advice or a guarantee of the peg.
+
+---
+
+## After you're listed
+
+- Keep your attestations current — a lapse triggers a re-review.
+- Tell us promptly about: reserve impairment, redemption suspension, use of a freeze/blacklist power affecting BlankFX pools or contracts, a contract upgrade, a key compromise, or regulatory action against you.
+- We do a light annual refresh of the same checklist.
+
+If we ever need to delist a token, we give notice and a wind-down window wherever that's consistent with user safety — an instant pull is a last resort.
+
+---
+
+## Get started
+
+Send your package to **listings@blankfx.org**. Include a single point of contact and we'll confirm receipt and your assigned tier.
+
+See also: [Broker & Market-Maker Onboarding](/broker-mm-onboarding) if you're looking to trade on BlankFX rather than list a token, or [Compliance & KYC](/compliance) for end-user verification.

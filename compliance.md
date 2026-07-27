@@ -76,3 +76,9 @@ Your KYC documents are:
 For questions about your verification status: **compliance@blankfx.org**
 
 Include your wallet address and a brief description of the issue for urgent matters.
+
+---
+
+## Looking to list a token or trade on BlankFX?
+
+This page covers end-user KYC/KYB. If you're a stablecoin issuer or a broker/market maker, see [Stablecoin Listing Requirements](listing-requirements.md) or [Broker & Market-Maker Onboarding](broker-mm-onboarding.md).

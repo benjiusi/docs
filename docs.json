@@ -55,7 +55,9 @@
           {
             "group": "Compliance",
             "pages": [
-              "compliance"
+              "compliance",
+              "listing-requirements",
+              "broker-mm-onboarding"
             ]
           }
         ]

@@ -46,3 +46,5 @@ Live on Ethereum Sepolia (testnet). Mainnet and additional network deployments a
 - Contracts: /contracts
 - FAQ: /faq
 - Compliance & KYC: /compliance
+- Stablecoin Listing Requirements: /listing-requirements
+- Broker & Market-Maker Onboarding: /broker-mm-onboarding
