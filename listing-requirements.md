@@ -5,7 +5,7 @@ description: What we need from an issuer before listing a stablecoin on BlankFX.
 
 # Stablecoin Listing Requirements
 
-BlankFX lists stablecoins into its FX pools and RFQ venue after a thorough due-diligence review. We do this to ensure our markets are safe for our corproate users and can operate at best price. On this page we list out the submissions we need from you. If you plan to list on BlankFX please contact us on listing@blankfx.org and send your documents in one package. We'll review and will get in touch if we need further clarification.
+BlankFX lists stablecoins into its FX pools and RFQ venue after a thorough due-diligence review. We do this to ensure our markets are safe for our corproate users and can operate at best price. On this page we list out the submissions we need from you. If you plan to list on BlankFX please contact us on listings@blankfx.org and send your documents in one package. We'll review and will get in touch if we need further clarification.
 
 #### A Note to our Users: A token that passed our listing due diligence means it passed this review at a point in time. This isn't investment advice or a guarantee of the peg for the stablecoin.
 
