@@ -45,6 +45,12 @@
             ]
           },
           {
+            "group": "Accept payments",
+            "pages": [
+              "tap"
+            ]
+          },
+          {
             "group": "Reference",
             "pages": [
               "contracts",

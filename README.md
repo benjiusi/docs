@@ -12,6 +12,7 @@ BlankFX is built for corridor-based settlement rather than generic token swappin
 - [Swaps](swaps.md)
 - [Earn](earn.md)
 - [Fees](fees.md)
+- [Tap for merchants](tap.md)
 - [Contracts](contracts.md)
 - [Supported Tokens](tokens.md)
 - [Compliance & KYC](compliance.md)

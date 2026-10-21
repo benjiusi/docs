@@ -12,6 +12,10 @@
 * [Earn](earn.md)
 * [Fees](fees.md)
 
+## Accept payments
+
+* [Tap for merchants](tap.md)
+
 ## Reference
 
 * [Contracts](contracts.md)
