@@ -1,8 +1,13 @@
-# Tap for merchants
+---
+title: Point of Sale for merchants
+description: Stablecoin point of sale (POS) for shops. Take payments at your counter with a phone or tablet, set up in about 10 minutes.
+---
 
-Tap turns any phone or tablet into a till. You type an amount, the till shows a QR code, your customer pays from their wallet, and the money goes straight to your wallet. The till turns green when the payment arrives.
+BlankFX Point of Sale (POS) turns any phone or tablet into a till. You type an amount, the till shows a QR code, your customer pays from their wallet, and the money goes straight to your wallet. The till turns green when the payment arrives.
 
-> **Note:** Tap currently runs on the **Ethereum Sepolia test network**. Payments use test coins with no real value. Use it to try Tap with your staff before going live.
+<Note>
+Point of Sale currently runs on the **Ethereum Sepolia test network**. Payments use test coins with no real value. Use it to try it with your staff before going live.
+</Note>
 
 ## What you need before you start
 
@@ -11,11 +16,11 @@ Tap turns any phone or tablet into a till. You type an amount, the till shows a 
 - **An authenticator app** (Google Authenticator, 1Password, Authy or similar), with two-factor authentication turned on in BlankFX. You need a code from it to change where payments go.
 - **A phone or tablet for each till**, with a web browser and an internet connection. No app to install.
 
-## Step 1: Set up Tap (once)
+## Step 1: Set up Point of Sale (once)
 
-1. Sign in and go to **Settings → Tap**.
+1. Sign in and go to **Settings → Point of sale**.
 2. Click **Add your first till**.
-3. Fill in the **Set up Tap** form:
+3. Fill in the **Set up point of sale** form:
    - **Business name**: customers see this when they pay. Use the name on your shop sign.
    - **Country**: two letters, e.g. `CH`.
    - **Settles in**: the currency you want to receive. Customers can pay in any supported coin; you always receive this one.
@@ -34,12 +39,14 @@ Tap turns any phone or tablet into a till. You type an amount, the till shows a 
 
 Add one till per counter or device, so each one is easy to tell apart in your reports.
 
-1. In **Settings → Tap**, click **Add till** (it opens automatically the first time).
+1. In **Settings → Point of sale**, click **Add till** (it opens automatically the first time).
 2. Enter the **Shop name**, and optionally the **Address** and **Country**.
 3. **Primary currency** and **Paid to** default to your account settings. Change them if this branch should settle differently. Paying a till into a different wallet asks for your two-factor code.
 4. Click **Create till**. A **6-digit pairing code** appears.
 
-> **Important:** The pairing code works **once** and expires after **10 minutes**. If it runs out, find the till in the list and click **Show pairing code** for a new one.
+<Warning>
+The pairing code works **once** and expires after **10 minutes**. If it runs out, find the till in the list and click **Show pairing code** for a new one.
+</Warning>
 
 ## Step 3: Pair the shop's phone or tablet
 
@@ -61,7 +68,9 @@ A paired device can only take payments. It cannot move money or see your account
 5. Wait for the till to turn green and show **PAID**. Then hand over the goods.
 6. Tap **Done**, or wait 10 seconds. The till returns to the keypad.
 
-> **Important:** Only release goods when the till shows **PAID**. A customer's "Payment sent" screen is not proof: the till is.
+<Warning>
+Only release goods when the till shows **PAID**. A customer's "Payment sent" screen is not proof: the till is.
+</Warning>
 
 ### What the customer sees
 
@@ -93,7 +102,7 @@ If a customer paid after a code expired, the payment still counts and appears in
 
 ## See your takings
 
-Once you have a till, **Payments → Tap** shows:
+Once you have a till, **Payments → Point of sale** shows:
 
 - what you took in person today, in total and per shop,
 - how many tills are online,
@@ -101,7 +110,7 @@ Once you have a till, **Payments → Tap** shows:
 
 ## Managing tills
 
-In **Settings → Tap → Tills**:
+In **Settings → Point of sale → Tills**:
 
 - **Edit**: rename a till or change its address, currency or payout wallet.
 - **Pair a new device**: move a till to a new phone or tablet. The old device signs out once the new one pairs.
@@ -115,7 +124,7 @@ To change where all payments go, use **Change** under **Settles to**. This needs
 
 **Can staff steal funds through the till?** No. Payments go straight to your linked wallet. A till holds no keys and cannot send money.
 
-**What does it cost?** Customers pay the network fee for their transfer. See [Fees](fees.md) for conversion fees when a customer pays in a different coin.
+**What does it cost?** Customers pay the network fee for their transfer. See [Fees](/fees) for conversion fees when a customer pays in a different coin.
 
 **Can I get paid into my bank account?** Not yet. Daily bank payouts are coming soon.
 

@@ -47,7 +47,7 @@
           {
             "group": "Accept payments",
             "pages": [
-              "tap"
+              "pos"
             ]
           },
           {
@@ -121,5 +121,11 @@
     "socials": {
       "github": "https://github.com/benjiusi/blankfx"
     }
-  }
+  },
+  "redirects": [
+    {
+      "source": "/tap",
+      "destination": "/pos"
+    }
+  ]
 }

@@ -14,7 +14,7 @@
 
 ## Accept payments
 
-* [Tap for merchants](tap.md)
+* [Point of Sale for merchants](pos.md)
 
 ## Reference
 
