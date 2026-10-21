@@ -37,7 +37,7 @@ An x402 client library does both steps for you.
 
 <Steps>
   <Step title="Approve Permit2 once">
-    None of the BlankFX Sepolia tokens support EIP-3009, so payment uses Permit2. Do a one-time ERC-20 `approve` of the token to the canonical Permit2 contract `0x000000000022D473030F116dDEE9F6B43aC78BA3`. The agent pays that gas itself. Without it BlankFX answers `412` (`PERMIT2_ALLOWANCE_REQUIRED`), reserves nothing, and the official client does **not** approve for you.
+    None of the BlankFX Sepolia tokens support EIP-3009, so payment uses Permit2. Do a one-time ERC-20 `approve` of the token to the canonical Permit2 contract `0x000000000022D473030F116dDEE9F6B43aC78BA3`. The agent pays that gas itself. The approval costs roughly 136,000 gas on these tokens, so if your client sets a gas limit by hand, use at least 200,000. Without it BlankFX answers `412` (`PERMIT2_ALLOWANCE_REQUIRED`), reserves nothing, and the official client does **not** approve for you.
   </Step>
   <Step title="Allow the token in your client">
     The official client refuses any token missing from its built-in default list. Add the BlankFX token to `spendControls.allowedAssets`, or the payment fails with "rejected by spendControls".
@@ -64,7 +64,17 @@ const pay = wrapFetchWithPaymentFromConfig(fetch, {
 const res = await pay('https://<api-host>/x402/pay/<payment-link-id>')
 ```
 
-Verified with `@x402/fetch` and `@x402/evm` v2.28.0.
+Verified with `@x402/fetch` and `@x402/evm` v2.28.0, including a live payment against the staging backend on Sepolia (October 2026).
+
+## Example: what a successful payment looks like
+
+For a 1 USDC invoice with a 0.05% transfer fee, the `402` asks for `1000500` (6 decimals, so 1.0005 USDC). After the signed retry the response is `200` and the `PAYMENT-RESPONSE` header decodes to:
+
+```json
+{ "success": true, "transaction": "0x…", "network": "eip155:11155111", "payer": "0x…" }
+```
+
+The body is the invoice with `paidVia: "x402"`. The merchant sees the payer and the fee in Payment Status; nobody else does.
 
 ## What BlankFX checks before it spends gas
 
