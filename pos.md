@@ -43,7 +43,7 @@ Add one till per counter or device, so each one is easy to tell apart in your re
 
 ## Step 3: Pair the shop's phone or tablet
 
-1. On the device at the counter, open **demo.blankfx.org/tap** in the browser.
+1. On the device at the counter, open **demo.blankfx.org/pos** in the browser.
 2. Type the 6-digit code.
 3. Give the till a name staff will recognise, e.g. *Front desk*.
 4. Tap **Pair till**.
