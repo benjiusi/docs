@@ -15,6 +15,10 @@ Register endpoints (scope `webhooks`) to receive events as they happen.
 | `fx.order.settled` / `.failed` / `.refunded` | an FX order reaches a terminal state |
 | `transfer.confirmed` / `.failed` | a transfer reaches a terminal state |
 
+<Note>
+`payment_link.paid` carries `id`, `status`, `amount`, `currency` and `payer_tx_hash`. When an AI agent paid the link over [x402](/api-reference/x402), it also carries `paid_via: "x402"`. The field is absent for ordinary payments.
+</Note>
+
 ## Delivery & verification
 
 Each delivery is **HMAC-signed with a per-endpoint secret shown once** at registration. Verify the signature before trusting the payload.
