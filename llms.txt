@@ -43,6 +43,8 @@ Live on Ethereum Sepolia (testnet). Mainnet and additional network deployments a
 - Swaps: /swaps
 - Earn: /earn
 - Fees: /fees
+- Agent payments (x402): /agent-payments
+- Paying a payment link with x402 (developers): /api-reference/x402
 - Contracts: /contracts
 - FAQ: /faq
 - Compliance & KYC: /compliance

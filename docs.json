@@ -41,6 +41,7 @@
             "pages": [
               "swaps",
               "earn",
+              "agent-payments",
               "fees"
             ]
           },
@@ -78,6 +79,7 @@
             "pages": [
               "api-reference/fx-flow",
               "api-reference/transfers",
+              "api-reference/x402",
               "api-reference/webhooks"
             ]
           },

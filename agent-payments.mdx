@@ -1,0 +1,39 @@
+---
+title: Agent payments
+description: Let AI agents pay your BlankFX payment links with stablecoins, using the open x402 standard.
+---
+
+# Agent payments
+
+Software agents now buy things: data, compute, API calls, services. BlankFX lets them pay the same payment links your human customers use, with no checkout page and no account.
+
+Agent payments use [x402](https://www.x402.org), an open standard that turns an ordinary web request into a payment. The agent asks for your payment link, the link answers "payment required" with the price, the agent signs a payment from its own wallet, and the link answers "paid".
+
+<Warning>
+Agent payments are in sandbox. They run on **Ethereum Sepolia** (test tokens, no real money) and are switched on per environment. Mainnet is not available yet.
+</Warning>
+
+## How it works for you as a merchant
+
+1. You switch on **Agent payments** in your BlankFX settings. It is off until you do.
+2. You create a payment link as usual.
+3. An agent pays that link. The money goes **directly from the agent's wallet to your payout wallet**. BlankFX never holds it.
+4. The payment is marked paid, your webhook fires as usual (`payment_link.paid`), and Payment Status shows it as an **Agent** payment.
+
+Your payout wallet stays in your own custody. BlankFX only pays the network fee to submit the transaction and records the result.
+
+## What the agent pays
+
+The agent pays the invoice amount **plus the normal BlankFX transfer fee, on top**. You receive the full invoice amount. This is the same fee a person pays on a payment link, and there is no extra "agent fee".
+
+## Safety and review
+
+- **Same compliance as people.** An agent's wallet goes through the same access checks and daily limits as a human payer. A suspended or unverified-over-limit wallet is refused before any money moves.
+- **One invoice, one payment.** An invoice is reserved while a payment settles, so it cannot be paid twice, edited or cancelled mid-payment.
+- **You see who paid.** The paying wallet address is shown to you in Payment Status. It is never shown to anyone else.
+- **Kill switch.** BlankFX can switch agent payments off platform-wide at any time. New agent payments stop immediately.
+- **Suspicious cases go to review.** If a payment cannot be matched with certainty, the invoice is held for manual review rather than being credited automatically.
+
+## For the developer building the agent
+
+See [Paying a payment link with x402](/api-reference/x402) for the request flow, the one-time wallet setup and a working code sample.

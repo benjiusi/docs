@@ -1,0 +1,90 @@
+---
+title: Paying a payment link with x402
+description: How an x402 agent pays a BlankFX payment link on Ethereum Sepolia, including the one-time setup and error codes.
+---
+
+# Paying a payment link with x402
+
+A merchant who has switched on **Agent payments** lets any x402 v2 agent pay their payment links. Funds move straight from the agent's wallet to the merchant's wallet. BlankFX pays the gas and records the payment.
+
+<Warning>
+Sandbox only: Ethereum Sepolia, test tokens, switched on per environment. No mainnet support yet. This route needs no API key.
+</Warning>
+
+## The flow
+
+```
+GET /x402/pay/{payment-link-id}
+  → 402  + PAYMENT-REQUIRED header (base64 JSON: price, token, recipient)
+GET /x402/pay/{payment-link-id}
+      + PAYMENT-SIGNATURE header (the signed payment)
+  → 200  + PAYMENT-RESPONSE header (success, transaction, network, payer)
+```
+
+An x402 client library does both steps for you.
+
+## What the `402` tells the agent
+
+| Field | Value |
+|---|---|
+| `scheme` / `network` | `exact` / `eip155:11155111` |
+| `asset` | The invoice's token (a BlankFX Sepolia token) |
+| `amount` | **Invoice amount plus the BlankFX transfer fee**, in the token's smallest unit. The payer pays the fee on top. |
+| `payTo` | The merchant's payout wallet |
+| `extra.assetTransferMethod` | `permit2` |
+
+## One-time setup for the agent's wallet
+
+<Steps>
+  <Step title="Approve Permit2 once">
+    None of the BlankFX Sepolia tokens support EIP-3009, so payment uses Permit2. Do a one-time ERC-20 `approve` of the token to the canonical Permit2 contract `0x000000000022D473030F116dDEE9F6B43aC78BA3`. The agent pays that gas itself. Without it BlankFX answers `412` (`PERMIT2_ALLOWANCE_REQUIRED`), reserves nothing, and the official client does **not** approve for you.
+  </Step>
+  <Step title="Allow the token in your client">
+    The official client refuses any token missing from its built-in default list. Add the BlankFX token to `spendControls.allowedAssets`, or the payment fails with "rejected by spendControls".
+  </Step>
+  <Step title="Raise the cap if needed">
+    The client caps each payment at **$1** by default. For an allow-listed token, set `maxAmountPerPayment` on its entry.
+  </Step>
+</Steps>
+
+## Minimal client
+
+```ts
+import { wrapFetchWithPaymentFromConfig } from '@x402/fetch'
+import { ExactEvmScheme } from '@x402/evm'
+import { privateKeyToAccount } from 'viem/accounts'
+
+const account = privateKeyToAccount(process.env.AGENT_KEY as `0x${string}`)
+const pay = wrapFetchWithPaymentFromConfig(fetch, {
+  schemes: [{ network: 'eip155:11155111', client: new ExactEvmScheme(account, { rpcUrl: process.env.SEPOLIA_RPC }) }],
+  spendControls: {
+    allowedAssets: [{ network: 'eip155:11155111', asset: '<token address from the 402>', maxAmountPerPayment: '100000000' }],
+  },
+})
+const res = await pay('https://<api-host>/x402/pay/<payment-link-id>')
+```
+
+Verified with `@x402/fetch` and `@x402/evm` v2.28.0.
+
+## What BlankFX checks before it spends gas
+
+- The recovered signer equals the payer.
+- The recipient, token and exact amount equal the challenge BlankFX issued (not what the client echoes).
+- The authorization has 30 to 90 seconds of validity left.
+- The Permit2 nonce is unused.
+- The wallet holds the amount and has approved Permit2.
+- The payer passes the same launch-access gate and $2,000/day unverified cap a human payer meets.
+
+## Errors
+
+| Status | Meaning |
+|---|---|
+| `402` with `PAYMENT-RESPONSE` `{ "success": false, "errorReason": "<code>" }` | Payment refused. `errorReason` is one of a fixed list, for example `wrong_amount`, `insufficient_funds`, `nonce_used`, `kyc_required`, `payment_in_progress`, `capacity`. |
+| `412` | Permit2 allowance missing (`PERMIT2_ALLOWANCE_REQUIRED`). Nothing was reserved. |
+| `400` | Malformed payment. |
+
+Chain error text is never returned. If settlement is still confirming, retry the **same signed payment**: it returns the current state and never sends a second transaction.
+
+## Not supported yet
+
+EIP-3009 tokens (none on Sepolia), converting between coins, gas-sponsored approvals, browser-based agents (no CORS on this route) and mainnet.
