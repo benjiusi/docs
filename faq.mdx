@@ -20,6 +20,10 @@ description: Frequently asked questions about BlankFX.
     BlankFX is currently live on Ethereum Sepolia (testnet). Ethereum mainnet and Base deployments are planned.
   </Accordion>
 
+  <Accordion title="Can AI agents pay a BlankFX payment link?">
+    Yes. A merchant who switches on agent payments lets any x402-compatible agent pay their payment links directly from the agent's own wallet, with no checkout page and no account. The agent pays the normal transfer fee on top of the invoice, and the merchant receives the full amount. See [Agent payments](/agent-payments) and the [developer guide](/api-reference/x402).
+  </Accordion>
+
   <Accordion title="Do I need ETH for gas?">
     No. BlankFX supports gasless swaps by default. You sign a message and the protocol submits the transaction. The gas cost is included in the swap spread. The only exception is the first-time token approval, which requires a small amount of ETH.
   </Accordion>

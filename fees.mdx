@@ -40,6 +40,10 @@ When using the gasless relay via Permit2 + BlankFXRelayRouter, there is no addit
 
 There are no fees for depositing into or withdrawing from liquidity pools. You pay only the standard Ethereum gas cost for the transaction.
 
+## Agent payments
+
+When an AI agent pays a payment link over x402, it pays the invoice amount **plus the normal BlankFX transfer fee, on top**. The merchant receives the full invoice amount. There is no separate agent fee. BlankFX pays the network gas to submit the payment; the agent only pays gas for its one-time Permit2 approval. See [Agent payments](/agent-payments).
+
 ## No hidden fees
 
 There are no platform fees, no withdrawal penalties, and no performance fees on yield earned. The spread on swaps is the only cost.
