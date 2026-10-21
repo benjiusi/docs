@@ -16,11 +16,15 @@ Agent payments are in sandbox. They run on **Ethereum Sepolia** (test tokens, no
 ## How it works for you as a merchant
 
 1. You switch on **Agent payments** in your BlankFX settings. It is off until you do.
-2. You create a payment link as usual.
-3. An agent pays that link. The money goes **directly from the agent's wallet to your payout wallet**. BlankFX never holds it.
+2. You create a payment link as usual, then copy its **Agent link** (Payments → Status) and give it to your agent.
+3. The agent pays that link. The money goes **directly from the agent's wallet to your payout wallet**. BlankFX never holds it.
 4. The payment is marked paid, your webhook fires as usual (`payment_link.paid`), and Payment Status shows it as an **Agent** payment.
 
 Your payout wallet stays in your own custody. BlankFX only pays the network fee to submit the transaction and records the result.
+
+<Note>
+Agent payments are not a marketplace and do not make your links discoverable. An agent can only pay a link you give it. The Agent link is the address the agent calls; it is different from the page link people open.
+</Note>
 
 ## What the agent pays
 
