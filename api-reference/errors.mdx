@@ -1,13 +1,13 @@
 ---
 title: Errors, idempotency & rate limits
-description: One error shape, safe retries, and per-key rate limits.
+description: The error shape, every error code, safe retries, and per-key rate limits.
 ---
 
 # Errors, idempotency & rate limits
 
 ## Errors
 
-Every error shares one shape:
+Almost every error shares one shape:
 
 ```json
 { "error": { "code": "<slug>", "message": "..." } }
@@ -15,17 +15,91 @@ Every error shares one shape:
 
 Match on `error.code` (a stable slug), not the human-readable `message`.
 
-| Status | Common codes |
+<Warning>
+A few responses do **not** use this shape yet. Handle them by HTTP status:
+
+- **`429` rate limits** return `{ "error": "Too many requests. Try again later." }` with a `Retry-After` header.
+- **`POST /wallets`** returns failures as `{ "error": "<message>" }`.
+- **Source-wallet denials on `POST /payment-links` and same-currency `POST /transfers`** return `403` with `{ "error": "<message>", "code": "SOURCE_WALLET_FORBIDDEN", ... }`.
+</Warning>
+
+### Authentication
+
+| Status | Code | Meaning |
+|---|---|---|
+| `401` | `missing_auth` | One of `BFX-API-KEY`, `BFX-TIMESTAMP`, `BFX-SIGNATURE` is missing. |
+| `401` | `stale_timestamp` | `BFX-TIMESTAMP` is more than 30 seconds from server time. |
+| `401` | `invalid_key` | The key id is unknown or revoked. |
+| `401` | `invalid_signature` | The signature does not verify against the canonical string. |
+| `401` | `replayed` | This exact signature was already used. Re-sign with a fresh timestamp. |
+| `403` | `ip_not_allowed` | The source IP is outside the key's IP allowlist. |
+| `403` | `insufficient_scope` | The key lacks the scope the route needs. |
+| `503` | `replay_check_unavailable` | Request freshness could not be checked. Nothing was executed; retry. |
+
+### Requests
+
+| Status | Code | Where |
+|---|---|---|
+| `400` | `invalid_request` | Missing or malformed fields (`/fx/quotes`, `/transfers`, `/webhooks`). |
+| `400` | `idempotency_key_required` | A write that requires `Idempotency-Key` was sent without it. See [Idempotency](#idempotency). |
+| `400` | `invalid_recipient` | `POST /transfers`: `recipient` is not an EVM address. |
+| `400` | `unsupported_asset` | `POST /transfers` only: `from_currency` or `currency` is not a supported asset. |
+| `400` | `invalid_amount`, `invalid_currency` | `POST /payment-links`. |
+| `400` | `invalid_url`, `invalid_events` | `POST /webhooks`. |
+| `400` | `invalid_tx_hash` | `POST /transfers/{id}/submit`. |
+| `400` | `invalid_label`, `invalid_chain`, `invalid_address`, `invalid_metadata`, `contact_cap` | `POST /contacts`. |
+| `400` | `siwe_failed`, `address_mismatch`, `promote_denied`, `last_signer` | Wallet management routes. |
+| `404` | `not_found` | The resource does not exist or belongs to another account. |
+| `409` | `status_conflict` | `PATCH /payment-links/{id}`: the link is paid or expired and can't be cancelled. |
+| `409` | `idempotency_in_progress` | A request with the same `Idempotency-Key` is still running. Comes with `Retry-After: 1`. |
+| `409` | `endpoint_cap_reached` | `POST /webhooks`: 10 active endpoints already. |
+| `409` | `duplicate` | `POST /contacts`: same address and chain already saved. |
+| `409` | `tx_hash_reused` | `POST /transfers/{id}/submit`: that transaction already confirmed another transfer. |
+| `422` | `transfer_unverified` | `POST /transfers/{id}/submit`: no matching ERC-20 `Transfer` in that transaction. |
+| `502` | `no_quotes` | `POST /fx/quotes`: no rail can quote this pair or amount right now. This is also what an unknown pair returns. |
+| `502` | `balances_unavailable` | `GET /balances`: on-chain balances could not be read. |
+| `502` | `verify_failed` | `POST /transfers/{id}/submit`: the transaction could not be checked on-chain. |
+| `503` | `webhooks_unavailable` | Webhook signing is not available. |
+| `500` | `internal_error`, `auth_error` | Unexpected server error. Safe to retry. |
+
+### `upstream_error`
+
+FX accept and submit, and cross-currency transfers, reuse the same internal trade path as the BlankFX app. When that path refuses, you get:
+
+```json
+{ "error": { "code": "upstream_error", "message": "<reason>" } }
+```
+
+The HTTP status is passed through from the trade path, so read the status first:
+
+| Status | Typical reason |
 |---|---|
-| `400` | `unsupported_asset`, `invalid_request` |
-| `401` | `invalid_signature`, `stale_timestamp`, `replayed` |
-| `403` | `insufficient_scope`, source-wallet not permitted |
-| `404` | `not_found` |
-| `429` | `rate_limited` |
+| `400` | The order could not be prepared or the signature was rejected (for example no route for the pair, or a malformed signature). |
+| `403` | The signer wallet is not permitted for this action (identity verification required, wallet suspended, or the unverified daily cap reached). Message example: `Source wallet is not permitted for swap`. |
+| `409` | The quote expired or the order is no longer in a state that allows this step. Request a fresh quote. |
+| `422` | The funding transaction reverted, or does not contain the expected on-chain event. |
+| `503` | Trading or the RFQ escrow is temporarily unavailable. |
 
 ## Idempotency
 
-`POST` / `PATCH` accept an `Idempotency-Key` header. Replaying the same key on the same route within **24h** returns the original response with `Idempotency-Replayed: true`.
+These calls **require** an `Idempotency-Key` header (any unique string, for example a UUID):
+
+| Call | Route |
+|---|---|
+| Create a payment link | `POST /payment-links` |
+| Cancel a payment link | `PATCH /payment-links/{id}` |
+| Register a webhook endpoint | `POST /webhooks` |
+| Register a signer wallet | `POST /wallets` |
+| Create a contact | `POST /contacts` |
+| Accept an FX quote | `POST /fx/quotes/{id}/accept` |
+| Create a transfer | `POST /transfers` |
+
+Without the header they return `400 idempotency_key_required`. Other routes ignore the header.
+
+- Replaying the same key on the same route within **24h** returns the original response, with `Idempotency-Replayed: true`. The operation does not run twice.
+- If the first request is still running, the replay returns `409 idempotency_in_progress` with `Retry-After: 1`.
+- `5xx` responses are not stored, so retrying after a `5xx` runs the operation again.
+- `POST /webhooks` returns the signing secret only on the first response. A replay returns the same body **without** `secret`.
 
 <Tip>
 Pair idempotency keys with fresh request signatures: the signature must always be fresh (replay-protected), but the `Idempotency-Key` is what makes the *operation* safe to retry.
@@ -33,14 +107,21 @@ Pair idempotency keys with fresh request signatures: the signature must always b
 
 ## Rate limits
 
-Limits are per key. Exceeding one returns `429`.
+Limits are per key, counted in fixed one-minute windows.
 
-| Bucket | Limit |
+| Bucket | Limit | Covers |
+|---|---|---|
+| Reads | 600 / min | Every `GET`, plus `POST /fx/quotes` |
+| Writes | 120 / min | Every other `POST`, `PATCH` and `DELETE` |
+
+Over the limit returns `429` with a `Retry-After` header (seconds until the window resets) and the body `{ "error": "Too many requests. Try again later." }`. Wait for `Retry-After`, then re-sign and retry.
+
+## List limits
+
+List endpoints return the newest records and have no pagination:
+
+| Route | Returns at most |
 |---|---|
-| Reads | 600 / min |
-| Writes | 120 / min |
-| Heaviest trade ops | 30 / min |
-
-<Note>
-Per-account rate tiers are a Phase-2 item. Phase 1 applies these flat defaults to every key.
-</Note>
+| `GET /fx/orders` | 50 AMM orders + 50 RFQ orders, merged, newest first |
+| `GET /transfers` | 100 transfers |
+| `GET /transactions` | 100 entries (`?limit=`, default 50) |

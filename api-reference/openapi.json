@@ -3,7 +3,7 @@
   "info": {
     "title": "BlankFX Public API",
     "version": "1.0.0",
-    "description": "Programmatic, **non-custodial** access to BlankFX: read your account, move money, and trade FX\nacross the AMM (gasless Permit2 relay) and RFQ (MM-backed escrow) rails. BlankFX never holds your\nkeys \u2014 every value operation returns EIP-712 typed-data that **you** sign with your registered\nwallet.\n\n## Base URL\n\nAll endpoints are under `https://api.blankfx.org/v1` (phase-1 `bfx_test_` keys run against the\nSepolia sandbox). Errors share one shape: `{ \"error\": { \"code\": \"<slug>\", \"message\": \"...\" } }`.\n\n## Authentication \u2014 Ed25519 request signing\n\nThere is **no shared secret**. You generate an Ed25519 keypair, register the *public* key, and\nsign every request with the *private* key (which BlankFX never sees).\n\n1. **Create a key** in the dashboard (Settings \u2192 API keys). Your Ed25519 keypair is generated in\n   the browser; the **private key (PKCS8 PEM) is shown once** \u2014 store it securely. Only the public\n   key is sent to BlankFX. You choose the key's scopes (below).\n2. **Sign each request.** Build the canonical string (LF-separated, no trailing newline):\n   ```\n   ${timestamp}\\n${METHOD}\\n${requestTarget}\\n${sha256_hex(body)}\n   ```\n   where `timestamp` is unix **seconds**, `METHOD` is upper-case, `requestTarget` is the path\n   **including any query string** (e.g. `/public/v1/fx/orders?limit=10`), and `sha256_hex(body)` is\n   the hex SHA-256 of the raw request body (`sha256_hex(\"\")` for GET/no-body). Then send three\n   headers:\n   - `BFX-API-KEY`: your `key_id`\n   - `BFX-TIMESTAMP`: the same unix-seconds timestamp\n   - `BFX-SIGNATURE`: `base64( Ed25519_sign(privateKey, canonicalString) )`\n3. **Freshness + replay.** The timestamp must be within **\u00b130s** of server time, and each signature\n   is single-use \u2014 re-sending an identical signed request is rejected (`replayed`). Always sign\n   retries with a **fresh timestamp** (even for idempotent calls).\n\n### Node signing example\n```js\nimport crypto from 'node:crypto';\nfunction signedHeaders({ keyId, privateKeyPem, method, requestTarget, body = '' }) {\n  const ts = Math.floor(Date.now() / 1000).toString();\n  const bodyHash = crypto.createHash('sha256').update(body).digest('hex');\n  const canonical = `${ts}\\n${method.toUpperCase()}\\n${requestTarget}\\n${bodyHash}`;\n  const sig = crypto.sign(null, Buffer.from(canonical), crypto.createPrivateKey(privateKeyPem));\n  return { 'BFX-API-KEY': keyId, 'BFX-TIMESTAMP': ts, 'BFX-SIGNATURE': sig.toString('base64') };\n}\n```\n\n## Scopes\n\nEach key carries a subset of scopes; a call missing the required scope returns `403\ninsufficient_scope`.\n- `read` \u2014 account, balances, wallets, rates, transactions, payment-link reads, exports\n- `trade` \u2014 FX quotes, accept, order submit/read (`/fx/*`)\n- `pay` \u2014 transfers, payment-link create/cancel, contacts (`/transfers*`, `/payment-links`)\n- `wallets` \u2014 programmatic signer-wallet register/manage (`/wallets*`)\n- `webhooks` \u2014 webhook endpoint management\n\n## Idempotency\n\nWrite calls (`POST`/`PATCH`) honour an optional `Idempotency-Key` header: replaying the same key on\nthe same route within 24h returns the original response (with `Idempotency-Replayed: true`) instead\nof acting twice.\n\n## Rate limits\n\nPer-key sliding window: **600/min** read, **120/min** write, **30/min** on the heaviest trade\noperations. Over-limit returns `429`.\n\n## Non-custodial value flow (FX)\n\n1. `POST /fx/quotes` \u2014 get indicative AMM + firm RFQ quotes for a pair.\n2. `POST /fx/quotes/{id}/accept` \u2014 locks the quote, creates an order, and returns **EIP-712\n   typed-data** to sign (AMM \u2192 a Permit2-witness order; RFQ \u2192 an escrow-funding order).\n3. Sign the typed-data with your registered wallet.\n4. `POST /fx/orders/{id}/submit` \u2014 send `{ signature }` (AMM: the relayer broadcasts your signed\n   Permit2 order) or `{ tx_hash }` (RFQ: you self-broadcast the escrow-funding tx; the backend\n   verifies the on-chain event). Poll `GET /fx/orders/{id}` for `settled`.\n\n## Transfers\n\n- **Cross-currency** (`from_currency \u2260 currency`): one atomic swap delivered to the payee \u2014 `accept`\n   returns a Permit2-witness order to sign; `submit { signature }` relays it.\n- **Same-currency** (same token): non-custodial self-broadcast \u2014 you sign and broadcast a standard\n   ERC-20 transfer, then `submit { tx_hash }` and the backend verifies the on-chain `Transfer`.\n\n## Webhooks\n\nRegister endpoints (scope `webhooks`) to receive `payment_link.paid`, `fx.order.settled|failed|\nrefunded`, and `transfer.confirmed|failed`. Each delivery is HMAC-signed with a per-endpoint secret\nshown once at registration; verify it before trusting the payload.",
+    "description": "Programmatic, **non-custodial** access to BlankFX: read your account, move money, and trade FX\nacross the AMM (gasless Permit2 relay) and RFQ (MM-backed escrow) rails. BlankFX never holds your\nkeys — every value operation returns EIP-712 typed-data that **you** sign with your registered\nwallet.\n\n## Base URL\n\nAll endpoints are under `https://api.blankfx.org/public/v1`. Test keys (`bfx_test_`) run on\nEthereum Sepolia (testnet); live keys and Ethereum mainnet are not yet available. Errors share one shape: `{ \"error\": { \"code\": \"<slug>\", \"message\": \"...\" } }`.\n\n## Authentication — Ed25519 request signing\n\nThere is **no shared secret**. You generate an Ed25519 keypair, register the *public* key, and\nsign every request with the *private* key (which BlankFX never sees).\n\n1. **Create a key** in the dashboard (Settings → API keys). Your Ed25519 keypair is generated in\n   the browser; the **private key (PKCS8 PEM) is shown once** — store it securely. Only the public\n   key is sent to BlankFX. You choose the key's scopes (below).\n2. **Sign each request.** Build the canonical string (LF-separated, no trailing newline):\n   ```\n   ${timestamp}\\n${METHOD}\\n${requestTarget}\\n${sha256_hex(body)}\n   ```\n   where `timestamp` is unix **seconds**, `METHOD` is upper-case, `requestTarget` is the path\n   **including any query string** (e.g. `/public/v1/fx/orders?limit=10`), and `sha256_hex(body)` is\n   the hex SHA-256 of the raw request body (`sha256_hex(\"\")` for GET/no-body). Then send three\n   headers:\n   - `BFX-API-KEY`: your `key_id`\n   - `BFX-TIMESTAMP`: the same unix-seconds timestamp\n   - `BFX-SIGNATURE`: `base64( Ed25519_sign(privateKey, canonicalString) )`\n3. **Freshness + replay.** The timestamp must be within **±30s** of server time, and each signature\n   is single-use — re-sending an identical signed request is rejected (`replayed`). Always sign\n   retries with a **fresh timestamp** (even for idempotent calls).\n\n### Node signing example\n```js\nimport crypto from 'node:crypto';\nfunction signedHeaders({ keyId, privateKeyPem, method, requestTarget, body = '' }) {\n  const ts = Math.floor(Date.now() / 1000).toString();\n  const bodyHash = crypto.createHash('sha256').update(body).digest('hex');\n  const canonical = `${ts}\\n${method.toUpperCase()}\\n${requestTarget}\\n${bodyHash}`;\n  const sig = crypto.sign(null, Buffer.from(canonical), crypto.createPrivateKey(privateKeyPem));\n  return { 'BFX-API-KEY': keyId, 'BFX-TIMESTAMP': ts, 'BFX-SIGNATURE': sig.toString('base64') };\n}\n```\n\n## Scopes\n\nEach key carries a subset of scopes; a call missing the required scope returns `403\ninsufficient_scope`.\n- `read` — account, balances, wallets, rates, transactions, payment-link reads, exports\n- `trade` — FX quotes, accept, order submit/read (`/fx/*`)\n- `pay` — transfers, payment-link create/cancel, contacts (`/transfers*`, `/payment-links`)\n- `wallets` — programmatic signer-wallet register/manage (`/wallets*`)\n- `webhooks` — webhook endpoint management\n\n## Idempotency\n\nResource-mutating calls — payment-link create/cancel, webhook create, wallet register, contact\ncreate, FX quote accept, transfer create — REQUIRE an `Idempotency-Key` header (any unique string,\ne.g. a UUID); a request without it returns `400 idempotency_key_required`. Replaying the same key on\nthe same route within 24h returns the original response (with `Idempotency-Replayed: true`) instead\nof acting twice. Other write-shaped routes (e.g. `/transfers/:id/submit`, `/webhooks/:id/test`,\n`/fx/quotes`) do not take the header.\n\n## Rate limits\n\nPer key, per minute: **600** read requests and **120** write requests. Over the limit returns `429`\nwith a `Retry-After` header (seconds).\n\n## Non-custodial value flow (FX)\n\n1. `POST /fx/quotes` — get indicative AMM + firm RFQ quotes for a pair.\n2. `POST /fx/quotes/{id}/accept` — locks the quote, creates an order, and returns **EIP-712\n   typed-data** to sign (AMM → a Permit2-witness order; RFQ → an escrow-funding order).\n3. Sign the typed-data with your registered wallet.\n4. `POST /fx/orders/{id}/submit` — send `{ signature }` (AMM: the relayer broadcasts your signed\n   Permit2 order) or `{ tx_hash }` (RFQ: you self-broadcast the escrow-funding tx; the backend\n   verifies the on-chain event). Poll `GET /fx/orders/{id}` for `settled`.\n\n## Transfers\n\n- **Cross-currency** (`from_currency ≠ currency`): one atomic swap delivered to the payee — `POST\n   /transfers` returns a Permit2-witness order to sign; `submit { signature }` relays it.\n- **Same-currency** (same token): non-custodial self-broadcast — you sign and broadcast a standard\n   ERC-20 transfer, then `submit { tx_hash }` and the backend verifies the on-chain `Transfer`.\n\n## Webhooks\n\nRegister endpoints (scope `webhooks`) to receive `payment_link.paid`, `fx.order.settled|failed|\nrefunded`, and `transfer.confirmed|failed`. Each delivery is HMAC-signed with a per-endpoint secret\nshown once at registration; verify it before trusting the payload.",
     "contact": {
       "name": "BlankFX",
       "url": "https://blankfx.org"
@@ -11,12 +11,8 @@
   },
   "servers": [
     {
-      "url": "https://blankfx-contacts.fly.dev/public/v1",
-      "description": "Sandbox \u2014 Sepolia testnet, bfx_test_ keys (live today)"
-    },
-    {
-      "url": "https://api.blankfx.org/v1",
-      "description": "Stable public host (provisioned in Phase 2)"
+      "url": "https://api.blankfx.org/public/v1",
+      "description": "BlankFX Public API. Test keys (bfx_test_) run on Ethereum Sepolia (testnet)."
     }
   ],
   "security": [
@@ -141,7 +137,6 @@
           "state": {
             "type": "string",
             "enum": [
-              "quoted",
               "accepted",
               "awaiting_funding",
               "funded",
@@ -150,7 +145,8 @@
               "failed",
               "expired",
               "refunded"
-            ]
+            ],
+            "description": "AMM: accepted → settling → settled | failed. RFQ: awaiting_funding → funded → settling → settled | failed | expired | refunded."
           },
           "sell_asset": {
             "type": "string",
@@ -241,11 +237,11 @@
           },
           "funding": {
             "type": "object",
-            "description": "The RfqEscrowFunding struct (rfq_escrow_funding) to sign."
+            "description": "RFQ escrow-funding order: the market maker's signed RFQQuote (`quote`), its EIP-712 signature (`signature`), the escrow address, `quoteHash`, and `permit2Funding` (an RfqEscrowFunding witness to sign only when `permit2Funding.enabled` is true)."
           },
           "relay": {
             "type": "object",
-            "description": "Relay params: permit2, relayRouter/escrow, witnessTypeString, chainId."
+            "description": "Relay params. AMM: chainId, relayRouter, permit2, witnessTypeString. RFQ: chainId, escrow, fundingMethod."
           }
         }
       }
@@ -268,12 +264,13 @@
           "200": {
             "description": "Service is healthy"
           }
-        }
+        },
+        "operationId": "getStatus"
       }
     },
     "/whoami": {
       "get": {
-        "summary": "Resolve the calling key \u2014 its account and granted scopes",
+        "summary": "Resolve the calling key — its account and granted scopes",
         "responses": {
           "200": {
             "description": "The resolved key identity (key_id, user_id, scopes)"
@@ -284,7 +281,8 @@
           "403": {
             "description": "Insufficient scope or IP not allowed"
           }
-        }
+        },
+        "operationId": "getWhoami"
       }
     },
     "/account": {
@@ -300,7 +298,8 @@
           "403": {
             "description": "Insufficient scope"
           }
-        }
+        },
+        "operationId": "getAccount"
       }
     },
     "/balances": {
@@ -319,12 +318,13 @@
           "502": {
             "description": "Balance RPC unavailable"
           }
-        }
+        },
+        "operationId": "getBalances"
       }
     },
     "/wallets": {
       "get": {
-        "summary": "List the account\u2019s linked wallets (read-only)",
+        "summary": "List the account’s linked wallets (read-only)",
         "responses": {
           "200": {
             "description": "Wallets"
@@ -335,7 +335,8 @@
           "403": {
             "description": "Insufficient scope"
           }
-        }
+        },
+        "operationId": "listWallets"
       },
       "post": {
         "summary": "Register a signing wallet via SIWE proof (wallets scope)",
@@ -350,9 +351,24 @@
             "description": "Insufficient scope"
           },
           "409": {
-            "description": "Owned by another account"
+            "description": "Wallet is linked to a different account, or idempotency_in_progress"
+          },
+          "400": {
+            "description": "idempotency_key_required, or invalid input"
           }
-        }
+        },
+        "operationId": "registerWallet",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Any unique string (e.g. a UUID). Required: a request without it returns 400 idempotency_key_required. The same key on the same route within 24h replays the original response."
+          }
+        ]
       }
     },
     "/wallets/siwe-nonce": {
@@ -365,7 +381,8 @@
           "403": {
             "description": "Insufficient scope"
           }
-        }
+        },
+        "operationId": "getWalletSiweNonce"
       }
     },
     "/wallets/{address}": {
@@ -381,7 +398,18 @@
           "404": {
             "description": "Not found"
           }
-        }
+        },
+        "operationId": "updateWallet",
+        "parameters": [
+          {
+            "name": "address",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
       },
       "delete": {
         "summary": "Unlink a wallet (cannot remove the last signer) (wallets scope)",
@@ -398,7 +426,18 @@
           "404": {
             "description": "Not found"
           }
-        }
+        },
+        "operationId": "deleteWallet",
+        "parameters": [
+          {
+            "name": "address",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
       }
     },
     "/wallets/{address}/promote": {
@@ -414,7 +453,18 @@
           "403": {
             "description": "Insufficient scope"
           }
-        }
+        },
+        "operationId": "promoteWallet",
+        "parameters": [
+          {
+            "name": "address",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
       }
     },
     "/contacts": {
@@ -427,7 +477,8 @@
           "403": {
             "description": "Insufficient scope"
           }
-        }
+        },
+        "operationId": "listContacts"
       },
       "post": {
         "summary": "Create a contact (pay scope)",
@@ -442,9 +493,21 @@
             "description": "Insufficient scope"
           },
           "409": {
-            "description": "Duplicate"
+            "description": "duplicate (same address + chain), or idempotency_in_progress"
           }
-        }
+        },
+        "operationId": "createContact",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Any unique string (e.g. a UUID). Required: a request without it returns 400 idempotency_key_required. The same key on the same route within 24h replays the original response."
+          }
+        ]
       }
     },
     "/contacts/{id}": {
@@ -460,7 +523,18 @@
           "404": {
             "description": "Not found"
           }
-        }
+        },
+        "operationId": "deleteContact",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
       }
     },
     "/transactions/export": {
@@ -476,7 +550,8 @@
           "403": {
             "description": "Insufficient scope"
           }
-        }
+        },
+        "operationId": "exportTransactions"
       }
     },
     "/fx/rates": {
@@ -492,7 +567,8 @@
           "403": {
             "description": "Insufficient scope"
           }
-        }
+        },
+        "operationId": "getFxRates"
       }
     },
     "/transactions": {
@@ -508,7 +584,8 @@
           "403": {
             "description": "Insufficient scope"
           }
-        }
+        },
+        "operationId": "listTransactions"
       }
     },
     "/payment-links": {
@@ -524,7 +601,8 @@
           "403": {
             "description": "Insufficient scope"
           }
-        }
+        },
+        "operationId": "listPaymentLinks"
       },
       "post": {
         "summary": "Create a payment link (pay scope, idempotent)",
@@ -540,8 +618,23 @@
           },
           "403": {
             "description": "Insufficient scope"
+          },
+          "409": {
+            "description": "idempotency_in_progress: a request with this key is still running; retry shortly"
           }
-        }
+        },
+        "operationId": "createPaymentLink",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Any unique string (e.g. a UUID). Required: a request without it returns 400 idempotency_key_required. The same key on the same route within 24h replays the original response."
+          }
+        ]
       }
     },
     "/payment-links/{id}": {
@@ -560,13 +653,24 @@
           "404": {
             "description": "Not found"
           }
-        }
+        },
+        "operationId": "getPaymentLink",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
       },
       "patch": {
-        "summary": "Cancel a payment link (pay scope)",
+        "summary": "Cancel a payment link (pay scope) — only a pending link is cancellable",
         "responses": {
           "200": {
-            "description": "Cancelled"
+            "description": "Cancelled (repeat cancel is an idempotent no-op)"
           },
           "401": {
             "description": "Auth failed"
@@ -576,8 +680,34 @@
           },
           "404": {
             "description": "Not found"
+          },
+          "409": {
+            "description": "status_conflict: the link is paid or expired and can no longer be cancelled (also returned as status_conflict while an agent payment is in progress); or idempotency_in_progress"
+          },
+          "400": {
+            "description": "idempotency_key_required, or invalid input"
           }
-        }
+        },
+        "operationId": "cancelPaymentLink",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Any unique string (e.g. a UUID). Required: a request without it returns 400 idempotency_key_required. The same key on the same route within 24h replays the original response."
+          }
+        ]
       }
     },
     "/currencies": {
@@ -593,7 +723,8 @@
           "403": {
             "description": "Insufficient scope"
           }
-        }
+        },
+        "operationId": "listCurrencies"
       }
     },
     "/fx/quotes": {
@@ -615,12 +746,13 @@
           "502": {
             "description": "No quote available"
           }
-        }
+        },
+        "operationId": "createFxQuotes"
       }
     },
     "/fx/quotes/{id}/accept": {
       "post": {
-        "summary": "Accept a quote \u2192 create an order + return the signable EIP-712 payload (trade scope, idempotent)",
+        "summary": "Accept a quote → create an order + return the signable EIP-712 payload (trade scope, idempotent)",
         "responses": {
           "201": {
             "description": "Accepted"
@@ -633,13 +765,39 @@
           },
           "404": {
             "description": "Quote not found"
+          },
+          "400": {
+            "description": "idempotency_key_required, or invalid input"
+          },
+          "409": {
+            "description": "idempotency_in_progress: a request with this key is still running; retry shortly"
           }
-        }
+        },
+        "operationId": "acceptFxQuote",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Any unique string (e.g. a UUID). Required: a request without it returns 400 idempotency_key_required. The same key on the same route within 24h replays the original response."
+          }
+        ]
       }
     },
     "/fx/orders/{id}/submit": {
       "post": {
-        "summary": "Submit a signed order \u2014 {signature} relays (AMM) or {tx_hash} verifies escrow (RFQ) (trade scope)",
+        "summary": "Submit a signed order — {signature} relays (AMM) or {tx_hash} verifies escrow (RFQ) (trade scope)",
         "responses": {
           "200": {
             "description": "Submitted"
@@ -656,7 +814,18 @@
           "404": {
             "description": "Order not found"
           }
-        }
+        },
+        "operationId": "submitFxOrder",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
       }
     },
     "/fx/orders": {
@@ -672,7 +841,8 @@
           "403": {
             "description": "Insufficient scope"
           }
-        }
+        },
+        "operationId": "listFxOrders"
       }
     },
     "/fx/orders/{id}": {
@@ -691,7 +861,18 @@
           "404": {
             "description": "Not found"
           }
-        }
+        },
+        "operationId": "getFxOrder",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
       }
     },
     "/transfers": {
@@ -707,10 +888,11 @@
           "403": {
             "description": "Insufficient scope"
           }
-        }
+        },
+        "operationId": "listTransfers"
       },
       "post": {
-        "summary": "Create a transfer \u2014 cross-currency (atomic swap) or same-token (self-broadcast) (pay scope, idempotent)",
+        "summary": "Create a transfer — cross-currency (atomic swap) or same-token (self-broadcast) (pay scope, idempotent)",
         "responses": {
           "201": {
             "description": "Created"
@@ -723,13 +905,28 @@
           },
           "403": {
             "description": "Insufficient scope / gated"
+          },
+          "409": {
+            "description": "idempotency_in_progress: a request with this key is still running; retry shortly"
           }
-        }
+        },
+        "operationId": "createTransfer",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Any unique string (e.g. a UUID). Required: a request without it returns 400 idempotency_key_required. The same key on the same route within 24h replays the original response."
+          }
+        ]
       }
     },
     "/transfers/{id}/submit": {
       "post": {
-        "summary": "Submit a transfer \u2014 {signature} relays the swap or {tx_hash} verifies a self-broadcast (pay scope)",
+        "summary": "Submit a transfer — {signature} relays the swap or {tx_hash} verifies a self-broadcast (pay scope)",
         "responses": {
           "200": {
             "description": "Submitted"
@@ -749,7 +946,18 @@
           "422": {
             "description": "Transfer not verified on-chain"
           }
-        }
+        },
+        "operationId": "submitTransfer",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
       }
     },
     "/transfers/{id}": {
@@ -768,7 +976,18 @@
           "404": {
             "description": "Not found"
           }
-        }
+        },
+        "operationId": "getTransfer",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
       }
     },
     "/webhooks": {
@@ -784,7 +1003,8 @@
           "403": {
             "description": "Insufficient scope"
           }
-        }
+        },
+        "operationId": "listWebhooks"
       },
       "post": {
         "summary": "Register a webhook endpoint (returns the signing secret once)",
@@ -799,12 +1019,24 @@
             "description": "Insufficient scope"
           },
           "409": {
-            "description": "Endpoint cap reached"
+            "description": "endpoint_cap_reached (10 active endpoints), or idempotency_in_progress"
           },
           "503": {
             "description": "Webhooks not configured"
           }
-        }
+        },
+        "operationId": "createWebhook",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Any unique string (e.g. a UUID). Required: a request without it returns 400 idempotency_key_required. The same key on the same route within 24h replays the original response."
+          }
+        ]
       }
     },
     "/webhooks/{id}": {
@@ -823,7 +1055,18 @@
           "404": {
             "description": "Not found"
           }
-        }
+        },
+        "operationId": "deleteWebhook",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
       }
     },
     "/webhooks/{id}/test": {
@@ -842,7 +1085,18 @@
           "503": {
             "description": "Webhooks not configured"
           }
-        }
+        },
+        "operationId": "testWebhook",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
       }
     }
   }

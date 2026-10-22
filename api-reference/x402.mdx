@@ -1,6 +1,6 @@
 ---
 title: Paying a payment link with x402
-description: How an x402 agent pays a BlankFX payment link on Ethereum Sepolia, including the one-time setup and error codes.
+description: How an x402 agent pays a BlankFX payment link on Sepolia (testnet), including the one-time setup and error codes.
 ---
 
 # Paying a payment link with x402
@@ -8,7 +8,7 @@ description: How an x402 agent pays a BlankFX payment link on Ethereum Sepolia, 
 A merchant who has switched on **Agent payments** lets any x402 v2 agent pay their payment links. Funds move straight from the agent's wallet to the merchant's wallet. BlankFX pays the gas and records the payment.
 
 <Warning>
-Sandbox only: Ethereum Sepolia, test tokens, switched on per environment. No mainnet support yet. This route needs no API key.
+Sepolia (testnet) and test tokens only, switched on per environment. Ethereum (mainnet) is not yet supported. This route needs no API key and is served at `https://api.blankfx.org/x402/pay/{payment-link-id}` (not under `/public/v1`).
 </Warning>
 
 ## The flow
@@ -61,10 +61,10 @@ const pay = wrapFetchWithPaymentFromConfig(fetch, {
     allowedAssets: [{ network: 'eip155:11155111', asset: '<token address from the 402>', maxAmountPerPayment: '100000000' }],
   },
 })
-const res = await pay('https://<api-host>/x402/pay/<payment-link-id>')
+const res = await pay('https://api.blankfx.org/x402/pay/<payment-link-id>')
 ```
 
-Verified with `@x402/fetch` and `@x402/evm` v2.28.0, including a live payment against the staging backend on Sepolia (October 2026).
+Verified with `@x402/fetch` and `@x402/evm` v2.28.0, including a live payment on Sepolia (October 2026).
 
 ## Example: what a successful payment looks like
 
@@ -83,15 +83,42 @@ The body is the invoice with `paidVia: "x402"`. The merchant sees the payer and 
 - The authorization has 30 to 90 seconds of validity left.
 - The Permit2 nonce is unused.
 - The wallet holds the amount and has approved Permit2.
-- The payer passes the same launch-access gate and $2,000/day unverified cap a human payer meets.
+- The payer's wallet is not suspended and stays within the $2,000/day cap for unverified wallets, the same checks a human payer meets.
 
 ## Errors
 
 | Status | Meaning |
 |---|---|
-| `402` with `PAYMENT-RESPONSE` `{ "success": false, "errorReason": "<code>" }` | Payment refused. `errorReason` is one of a fixed list, for example `wrong_amount`, `insufficient_funds`, `nonce_used`, `kyc_required`, `payment_in_progress`, `capacity`. |
-| `412` | Permit2 allowance missing (`PERMIT2_ALLOWANCE_REQUIRED`). Nothing was reserved. |
-| `400` | Malformed payment. |
+| `402` with `PAYMENT-RESPONSE` `{ "success": false, "errorReason": "<code>" }` | Payment refused. A fresh `PAYMENT-REQUIRED` challenge is attached when one can be issued. `errorReason` is one of the codes below. |
+| `409` `{ "error": "payment_in_progress" }` | Another payment for this link is already settling. Retry later; do not sign a new payment. |
+| `409` `{ "error": "Payment request is <status>" }` | The link is cancelled or expired. |
+| `412` | Permit2 allowance missing (`PERMIT2_ALLOWANCE_REQUIRED`, `errorReason: "permit2_allowance_required"`). Nothing was reserved. |
+| `400` `{ "error": "invalid_payload" }` | Malformed `PAYMENT-SIGNATURE`, or a token, spender or validity window that doesn't match the challenge. |
+| `404` `{ "error": "not_found" }` | The link doesn't exist, doesn't accept agent payments, or agent payments are switched off. All of these look the same on purpose. |
+| `429` | Rate limited: 60 requests/min per IP, **30/min per payment link**, 20/min per payer. Honour `Retry-After`. |
+| `503` `{ "error": "unavailable" }` | No challenge could be issued right now (for example the fee could not be read). Retry. |
+
+`errorReason` codes on a `402`:
+
+| Code | Meaning |
+|---|---|
+| `wrong_amount` | Amount differs from the challenge (invoice plus fee). |
+| `wrong_recipient` | `to` is not the merchant's payout wallet from the challenge. |
+| `insufficient_funds` | The payer's balance is below the amount. |
+| `nonce_used` | The Permit2 nonce was already used. |
+| `expired` | The authorization's deadline has passed. |
+| `not_yet_valid` | The authorization is not valid yet. |
+| `insufficient_validity` | Less than 30 seconds of validity left. Sign a fresh payment. |
+| `invalid_signature` | The signature does not recover to the payer. |
+| `unsupported_scheme` | Scheme or network differs from the challenge, or the transfer method is not `permit2`. |
+| `kyc_required` | The payer is over the unverified cap or not permitted. |
+| `payer_blocked` | The payer is temporarily blocked after repeated failed settlements. |
+| `capacity` | The daily agent-payment budget for this merchant or for BlankFX is used up. |
+| `invoice_changed` | The link changed (paid, cancelled) after the challenge was issued. |
+| `settlement_pending` | The transaction was sent but is not confirmed yet. `PAYMENT-RESPONSE` carries the `transaction`. |
+| `settlement_failed` | The settlement transaction could not be sent. |
+| `fee_unavailable` | The current transfer fee could not be read. Retry. |
+| `unavailable` | The challenge is unknown or expired. Request a new `402`. |
 
 Chain error text is never returned. If settlement is still confirming, retry the **same signed payment**: it returns the current state and never sends a second transaction.
 

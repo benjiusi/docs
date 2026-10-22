@@ -1,60 +1,47 @@
 ---
 title: Swaps
-description: How BlankFX swaps work - routing, pricing, and gasless execution.
+description: How BlankFX converts stablecoins - same-currency and cross-currency swaps, pricing, gasless execution and rate protection.
 ---
 
 # Swaps
 
-## How pricing works
+## Two kinds of swap
 
-BlankFX uses oracle-anchored pricing for FX swaps. Instead of deriving the rate from pool ratios, the protocol reads the current FX rate from on-chain oracles and applies a small spread.
+| Swap | Example | How it is priced |
+|---|---|---|
+| **Same-currency** | USDC → USDT, EURC → EURAU | 1:1, minus a fee |
+| **Cross-currency** | USDC → EURC, XSGD → USDC | Oracle FX rate, adjusted by a pricing curve, minus a fee |
 
-This means:
+Any listed token can be swapped for any other. The app picks the route; you don't choose pools. See [Supported tokens](/tokens) for the full list.
 
-- The rate you see is close to the oracle mid-rate
-- Large trades don't cause significant price impact
-- The execution path is selected for best price
+Every swap is **atomic**: it settles in full in one transaction or not at all. There are no partial fills.
 
-## Swap types
+## Same-currency swaps
 
-The protocol routes your trade automatically based on the tokens involved:
+Each currency has one pool holding all its stablecoins (for example, the USD pool holds USDC, USDT, RLUSD and OUSD). A same-currency swap exchanges one coin for another inside that pool at **1:1 minus the fee**.
 
-| From | To | Route |
-|------|-----|-------|
-| USDC | USDT | USD Hub (direct swap between USD stablecoins) |
-| USDC | EURC | Cross-currency (USD Hub → EUR Pool via oracle rate) |
-| EURC | USDC | Cross-currency (EUR Pool → USD Hub via oracle rate) |
-| USDT | USDC | USD Hub (direct swap between USD stablecoins) |
-
-You don't need to think about routing. The interface selects the optimal path automatically.
-
-## USD Hub swaps
-
-Swaps between USD-denominated stablecoins (USDC, USDT, RLUSD) happen inside the USD Hub. These are essentially 1:1 swaps with a minimal spread, since all tokens represent the same underlying currency.
+The fee starts at the pool's base fee and rises when the coin you are buying is running short in the pool, which steers flow back towards balance. A pool never pays out a coin below 5% of what it owes in that coin. See [Fees](/fees).
 
 ## Cross-currency swaps
 
-When you swap between different currencies (e.g. USDC to EURC), the protocol:
+A cross-currency swap takes your coin into its currency pool and pays the other coin out of the other currency's pool. The rate:
 
-1. Takes your input token into the USD Hub
-2. Reads the EUR/USD oracle rate
-3. Calculates the output amount minus spread
-4. Sends the output token from the EUR Pool to your wallet
+1. **Starts from the oracle mid-rate** (e.g. EUR/USD). See [How the exchange works](/how-it-works#oracles) for oracle sources.
+2. **Is adjusted by a pricing curve** that moves the rate against the trade as size grows or as the pool it pays out of gets short. Small trades in a balanced pool price very close to the oracle; large trades or depleted pools price further away.
+3. **Has the fee deducted.**
 
-Settlement is atomic — either the full swap completes or nothing happens. No partial fills.
+If a quote would land more than **2% away from the oracle rate**, the pool refuses it. Larger tickets of that kind go to [RFQ](/api-reference/fx-flow), where market makers quote a firm price.
 
 ## Gasless swaps
 
-BlankFX supports gasless execution. Instead of submitting an on-chain transaction yourself, you sign an off-chain message and the relay service submits it for you.
+The first time you sell a token, you approve it once to the canonical Permit2 contract. That approval is an on-chain transaction you pay gas for.
 
-The gas cost is built into the swap spread, so you never see a separate gas charge. From your perspective: quote, confirm, receive tokens.
+After that, swaps of **$100 or more** are gasless. You sign a message (free) and the BlankFX relayer submits the transaction through the relay router. BlankFX currently pays the network fee. The relayer cannot change your order: the contract only executes the exact amounts, tokens and recipient you signed.
 
-**Requirements for gasless swaps:**
-- One-time token approval to the Permit2 contract (this is an on-chain transaction that costs gas)
-- After that, all swaps are gasless via the BlankFXRelayRouter
+Swaps under $100 are sent from your own wallet and you pay gas.
 
-## Slippage and minimum output
+## Rate protection
 
-Every swap includes a minimum output amount to protect you from unexpected rate changes between quoting and execution. The default rate tolerance is 0.5%.
+Every swap carries a minimum output. If the rate moves against you by more than your tolerance between quote and execution, the transaction reverts and you keep your tokens.
 
-If the rate moves unfavorably beyond your tolerance, the transaction reverts and you keep your tokens. You can adjust this in **Exchange settings**.
+The default tolerance is **0.10%**. You can set it between 0.01% and 1% under **Trade settings → Rate protection**.

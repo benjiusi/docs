@@ -1,6 +1,6 @@
 ---
 title: Webhooks
-description: Subscribe to settlement and payment events, verified with a per-endpoint HMAC secret.
+description: Subscribe to settlement and payment events, and verify every delivery with your endpoint's signing secret.
 ---
 
 # Webhooks
@@ -9,33 +9,103 @@ Register endpoints (scope `webhooks`) to receive events as they happen.
 
 ## Events
 
-| Event | Fires when |
+| Event | Fires when | `data` fields |
+|---|---|---|
+| `payment_link.paid` | a payment link is paid | `id`, `status`, `amount`, `currency`, `payer_tx_hash`, and `paid_via: "x402"` when an AI agent paid over [x402](/api-reference/x402) |
+| `fx.order.settled` / `.failed` / `.refunded` | an FX order reaches that state | `id`, `state`, `route`, `tx_hash` |
+| `transfer.confirmed` / `.failed` | a transfer reaches that state | `id`, `state`, `kind`, `tx_hash` |
+| `webhook.test` | you call `POST /webhooks/{id}/test` | `message` |
+
+Subscribe to events by name when you register. An FX order that ends `expired` sends no webhook. Treat a webhook as a signal and read the resource (`GET /fx/orders/{id}`, `GET /transfers/{id}`, `GET /payment-links/{id}`) for its current state.
+
+## Delivery format
+
+Each delivery is an HTTPS `POST` with a JSON body:
+
+```json
+{
+  "id": "evt_6f1c…",
+  "type": "fx.order.settled",
+  "created_at": "2026-10-22T09:14:03.120Z",
+  "data": { "id": "…", "state": "settled", "route": "amm", "tx_hash": "0x…" }
+}
+```
+
+and these headers:
+
+| Header | Value |
 |---|---|
-| `payment_link.paid` | a payment link is paid |
-| `fx.order.settled` / `.failed` / `.refunded` | an FX order reaches a terminal state |
-| `transfer.confirmed` / `.failed` | a transfer reaches a terminal state |
+| `BFX-Webhook-Signature` | `t=<unix seconds>,v1=<hex HMAC-SHA256>` |
+| `BFX-Webhook-Id` | The delivery id. Stays the same across retries of that delivery. |
+| `content-type` | `application/json` |
 
-<Note>
-`payment_link.paid` carries `id`, `status`, `amount`, `currency` and `payer_tx_hash`. When an AI agent paid the link over [x402](/api-reference/x402), it also carries `paid_via: "x402"`. The field is absent for ordinary payments.
-</Note>
+The body's `id` (`evt_…`) identifies the event; `BFX-Webhook-Id` identifies the delivery. Use either to de-duplicate.
 
-## Delivery & verification
+## Verify every delivery
 
-Each delivery is **HMAC-signed with a per-endpoint secret shown once** at registration. Verify the signature before trusting the payload.
+Your endpoint's signing secret (`whsec_…`) is returned **once**, in the `POST /webhooks` response. Store it. To verify a delivery:
 
-<Warning>
-Registration URLs must be **HTTPS** and are SSRF-screened. An endpoint that fails delivery repeatedly is auto-disabled.
-</Warning>
+1. Read `t` and `v1` from `BFX-Webhook-Signature`.
+2. Compute `HMAC-SHA256(secret, "<t>.<raw body>")` as lower-case hex. Use the raw request body bytes exactly as received, before any JSON parsing.
+3. Compare it to `v1` in constant time. Reject on mismatch.
+4. Reject the delivery if `t` is more than **5 minutes** from your clock. This limits replay of a captured delivery.
+
+```js
+import crypto from 'node:crypto';
+import express from 'express';
+
+const SECRET = process.env.BFX_WEBHOOK_SECRET; // whsec_…
+const TOLERANCE_SECONDS = 300;
+
+function verify(rawBody, header) {
+  const parts = Object.fromEntries(String(header || '').split(',').map((p) => p.split('=')));
+  const t = Number(parts.t);
+  if (!Number.isFinite(t) || !parts.v1) return false;
+  if (Math.abs(Date.now() / 1000 - t) > TOLERANCE_SECONDS) return false;
+  const expected = crypto.createHmac('sha256', SECRET).update(`${parts.t}.${rawBody}`).digest('hex');
+  const a = Buffer.from(expected, 'hex');
+  const b = Buffer.from(parts.v1, 'hex');
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+const app = express();
+app.post('/bfx-webhooks', express.raw({ type: 'application/json' }), (req, res) => {
+  const raw = req.body.toString('utf8');
+  if (!verify(raw, req.get('BFX-Webhook-Signature'))) return res.status(400).end();
+  const event = JSON.parse(raw);
+  // de-duplicate on event.id, then handle event.type
+  res.status(200).end();
+});
+```
+
+<Tip>
+Lost the secret? There is no way to read it again (a retried registration returns the body without `secret`). Delete the endpoint and register a new one.
+</Tip>
+
+## Retries
+
+A delivery succeeds when your endpoint answers any `2xx` within **10 seconds**. Anything else is retried on this schedule, measured from the previous attempt:
+
+| Attempt | When |
+|---|---|
+| 1 | as soon as the event occurs (normally within about 15 seconds) |
+| 2 | 5 minutes later |
+| 3 | 30 minutes later |
+| 4 | 2 hours later |
+| 5 | 6 hours later |
+| 6 | 6 hours later |
+
+That is 6 attempts over about 14 hours 35 minutes. If the sixth attempt fails, the delivery is dropped **and the whole endpoint is disabled**: it receives no further events. There is no re-enable call; delete the endpoint and register it again. Test deliveries follow the same rules.
 
 ## Managing endpoints
 
 ```
-POST   /webhooks           → register (returns the signing secret once)
-GET    /webhooks           → list your endpoints
-POST   /webhooks/{id}/test → send a test delivery
+POST   /webhooks           → register { url, events }  (returns the signing secret once; Idempotency-Key required)
+GET    /webhooks           → list your endpoints and their status
+POST   /webhooks/{id}/test → send a webhook.test delivery now
 DELETE /webhooks/{id}      → remove an endpoint
 ```
 
-<Note>
-`WEBHOOK_ENC_KEY` must be configured on the backend for webhook creation to succeed — per-endpoint secrets are encrypted at rest.
-</Note>
+- `url` must be **HTTPS** and resolve to a public address. Private, loopback and cloud-metadata addresses are refused with `400 invalid_url`.
+- `events` must list one or more of `payment_link.paid`, `fx.order.settled`, `fx.order.failed`, `fx.order.refunded`, `transfer.confirmed`, `transfer.failed`. `webhook.test` is not subscribable; it is sent only by the test call.
+- Each account can have up to **10** active endpoints (`409 endpoint_cap_reached`).

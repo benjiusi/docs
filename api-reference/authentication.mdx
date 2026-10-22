@@ -62,19 +62,20 @@ Send three headers:
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 
-const BASE = 'https://blankfx-contacts.fly.dev/public/v1'; // sandbox host (live today)
+const HOST = 'https://api.blankfx.org';
 const KEY_ID = process.env.BFX_KEY_ID;
 const privateKey = crypto.createPrivateKey(fs.readFileSync('key.pem')); // PKCS8 PEM shown once
 
-async function call(method, path, body) {
+// `path` is the full request target, starting with /public/v1/ (plus any query string).
+async function call(method, path, body, extraHeaders = {}) {
   const raw = body ? JSON.stringify(body) : '';
   const ts = Math.floor(Date.now() / 1000).toString();
   const bodyHash = crypto.createHash('sha256').update(raw).digest('hex');
   const canonical = `${ts}\n${method.toUpperCase()}\n${path}\n${bodyHash}`;
   const sig = crypto.sign(null, Buffer.from(canonical), privateKey).toString('base64');
-  const headers = { 'BFX-API-KEY': KEY_ID, 'BFX-TIMESTAMP': ts, 'BFX-SIGNATURE': sig };
+  const headers = { 'BFX-API-KEY': KEY_ID, 'BFX-TIMESTAMP': ts, 'BFX-SIGNATURE': sig, ...extraHeaders };
   if (raw) headers['content-type'] = 'application/json';
-  const res = await fetch(BASE + path.replace('/public/v1', ''), { method, headers, body: raw || undefined });
+  const res = await fetch(HOST + path, { method, headers, body: raw || undefined });
   return { status: res.status, body: await res.json() };
 }
 
@@ -82,5 +83,5 @@ console.log(await call('GET', '/public/v1/whoami'));
 ```
 
 <Note>
-The signed `requestTarget` must exactly equal the path the server receives. Against the sandbox host sign `/public/v1/...`; against `api.blankfx.org/v1` sign `/v1/...`. **Sign the path you send.**
+The signed `requestTarget` must exactly equal the path the server receives, including the `/public/v1` prefix and any query string. **Sign the path you send.** Write calls that create something also need an `Idempotency-Key` header (pass it in `extraHeaders`); see [Idempotency](/api-reference/errors#idempotency).
 </Note>

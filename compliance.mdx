@@ -5,7 +5,7 @@ description: What BlankFX requires from users to perform KYC and AML checks, and
 
 # Compliance & KYC
 
-BlankFX operates under a regulated AML framework. Depending on your account type and trading activity, we may ask you to complete identity verification (KYC) and provide information to meet our AML obligations.
+BlankFX runs an anti-money-laundering (AML) program. Depending on your account type and trading activity, we may ask you to complete identity verification (KYC) and provide information to meet our AML obligations.
 
 This page explains what we require, when we require it, and how the process works.
 
@@ -15,10 +15,10 @@ This page explains what we require, when we require it, and how the process work
 
 <CardGroup cols={2}>
   <Card title="Individual users" icon="person">
-    Personal wallets transacting below threshold limits can use BlankFX without identity verification. KYC is required if your cumulative activity exceeds applicable thresholds or if you access restricted features.
+    Personal wallets can use BlankFX without identity verification up to set limits (on-chain: $10,000 per rolling 30 days; payments: $2,000 per day). Above those limits, or to supply liquidity, KYC is required.
   </Card>
   <Card title="Corporate users" icon="building">
-    Businesses, payment platforms, and institutional users are required to complete KYB (Know Your Business) verification before accessing full liquidity and OTC/RFQ features.
+    Businesses, payment platforms, and institutional users are required to complete KYB (Know Your Business) verification before supplying liquidity or trading above unverified limits. Market makers follow [Broker & market-maker onboarding](/broker-mm-onboarding).
   </Card>
 </CardGroup>
 
@@ -32,7 +32,7 @@ To verify your identity we will ask for:
 
 | Document | Details |
 |----------|---------|
-| **Government-issued photo ID** | Passport, national ID card, or driver's licence |
+| **Government-issued photo ID** | Passport, national ID card, or driver's license |
 | **Proof of address** | Bank statement or utility bill dated within 90 days |
 | **Selfie / liveness check** | A photo or short video to confirm you match your ID |
 | **Source of funds** | Brief description for high-value transactions |
@@ -43,11 +43,11 @@ To verify your business we will ask for:
 
 | Document | Details |
 |----------|---------|
-| **Certificate of incorporation** | Issued by the relevant regulatory authority |
-| **Ownership structure** | List of beneficial owners holding ≥ 10% |
+| **Certificate of incorporation** | Or an extract from the company registry |
+| **Ownership structure** | List of beneficial owners holding ≥ 25% |
 | **Proof of address** | Registered business address confirmation |
 | **Identity documents for UBOs** | KYC for each Ultimate Beneficial Owner |
-| **Authorised signatory** | Name and ID for the person authorised to act on behalf of the entity |
+| **Authorized signatory** | Name and ID for the person authorized to act on behalf of the entity |
 | **Source of business funds** | Brief description of the business's primary revenue source |
 
 ---
@@ -78,7 +78,7 @@ All users are screened against international sanctions lists and PEP (Politicall
 BlankFX does not process transactions involving:
 
 - Individuals or entities on OFAC, EU, UN, or UK sanctions lists
-- Jurisdictions subject to comprehensive sanctions (Iran, North Korea, Cuba, Syria, Russia, Belarus, and others)
+- Jurisdictions subject to comprehensive sanctions (Iran, North Korea, Cuba, Syria, and others)
 - Activities associated with money laundering, terrorist financing, or fraud
 
 If your wallet address or identity matches a sanctions entry, access will be restricted and you will be notified.
@@ -92,7 +92,7 @@ Your KYC documents are:
 - Encrypted in transit and at rest
 - Stored only for as long as required by applicable law (typically 5 years after account closure)
 - Never sold or shared with third parties outside of legal obligations
-- Handled in accordance with our [Privacy Policy](/privacy)
+- Handled in accordance with our [Privacy Policy](https://blankfx.org/privacy)
 
 ---
 

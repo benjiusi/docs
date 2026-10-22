@@ -1,22 +1,71 @@
 {
-  "network": "ethereum-sepolia",
+  "network": "sepolia",
   "chainId": 11155111,
   "contracts": {
-    "BlankFXAccess": {
-      "address": "0xf40e9785504a0d9ae7efeaaf0cdf318838bda5aa",
-      "purpose": "Access control and user permissions"
+    "router": {
+      "contract": "BlankFXRouterV4",
+      "address": "0x2a1d03A2980AB49936eECa88E64DE87A3E170aAa",
+      "purpose": "Swap and payment entry point; charges the transfer fee"
     },
-    "BlankFXUSDHub": {
-      "address": "0xde80314fff3ecfe850f9102cc5527939ba06e49c",
-      "purpose": "USD liquidity pool (USDC, USDT, RLUSD)"
+    "relayRouter": {
+      "contract": "RelayRouter",
+      "address": "0xacF2d27a7162155dfFE40470aa4d31fA9F33Bf13",
+      "purpose": "Gasless swaps via Permit2"
     },
-    "BlankFXFXPool_EUR": {
-      "address": "0x2040e7b2b19d1636da9007dda14e2a5a0d020d46",
-      "purpose": "EUR liquidity pool (EURC)"
+    "usdPool": {
+      "contract": "BlankFXUSDHub",
+      "address": "0x89AD6DcE3d6FA1c70FFCC47F6cfC212F286d1803",
+      "purpose": "USD pool (BFX-USD)"
     },
-    "BlankFXRouterV3": {
-      "address": "0x5894a106b96119274ba258d0a5b1f4a84e293afb",
-      "purpose": "Swap router"
+    "eurPool": {
+      "contract": "BlankFXFXPool",
+      "address": "0xc9b3Ffd5A2039cFA3146Ae504f00ffb2Eaf065Ce",
+      "purpose": "EUR pool (BFX-EUR)"
+    },
+    "chfPool": {
+      "contract": "BlankFXFXPool",
+      "address": "0xCB970f0D3A2c744b0aBCbA25246D61088a02467d",
+      "purpose": "CHF pool (BFX-CHF)"
+    },
+    "sgdPool": {
+      "contract": "BlankFXFXPool",
+      "address": "0x69e472dB8cB1Ee84C950965889D2d58e4605Bb03",
+      "purpose": "SGD pool (BFX-SGD)"
+    },
+    "jpyPool": {
+      "contract": "BlankFXFXPool",
+      "address": "0x745B60F243d6BCAcB90F61aCa2f82FdDD521dc06",
+      "purpose": "JPY pool (BFX-JPY)"
+    },
+    "rfqEscrow": {
+      "contract": "BlankFXRFQEscrow",
+      "address": "0x6f8B33Ff200DEe2F3b86cA0b55697c5a4eF11A16",
+      "purpose": "RFQ escrow"
+    },
+    "paymentRouter": {
+      "contract": "PaymentRouter",
+      "address": "0x23cBA29C8C232d2340692AC3afE7761c019c56Ee",
+      "purpose": "Payment links and point of sale"
+    },
+    "transferForwarder": {
+      "contract": "BlankFXTransferForwarder",
+      "address": "0x2Adf10C1D3B1B374d3DF7c2780ccCc5B8242F576",
+      "purpose": "Same-currency transfers"
+    },
+    "riskEngine": {
+      "contract": "RiskEngine",
+      "address": "0x841c322dc9d12B454Ba1ac1b57Fbeb45f5623a7B",
+      "purpose": "Per-pool exposure limits"
+    },
+    "access": {
+      "contract": "BlankFXAccess",
+      "address": "0x58F580a7c1a8Da6055D408b6c2Ca519E1CbF9Ed8",
+      "purpose": "Wallet access tiers"
+    },
+    "permit2": {
+      "contract": "Permit2",
+      "address": "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+      "purpose": "Uniswap Permit2"
     }
   }
 }

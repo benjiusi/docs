@@ -11,17 +11,22 @@ BlankFX never holds your keys. Every value operation returns EIP-712 typed-data 
 
 ## Base URL
 
-<Info>
-The stable public host `https://api.blankfx.org/v1` is being provisioned as part of Phase 2. **Today**, the API is live on the sandbox host below — use it for all integration work.
-</Info>
-
 | | |
 |---|---|
-| **Sandbox (live today)** | `https://blankfx-contacts.fly.dev/public/v1` |
-| **Stable host (Phase 2)** | `https://api.blankfx.org/v1` |
-| **OpenAPI 3.1 spec** | [`/openapi.json`](https://blankfx-contacts.fly.dev/public/v1/openapi.json) |
+| **Base URL** | `https://api.blankfx.org/public/v1` |
+| **Health check** | [`GET /status`](https://api.blankfx.org/public/v1/status) (no key needed) |
+| **OpenAPI 3.1 spec** | [`/openapi.json`](https://api.blankfx.org/public/v1/openapi.json) |
 
-Phase 1 issues `bfx_test_` keys only, running against the **Sepolia** sandbox. `bfx_live_` keys are gated behind Phase-2 hardening plus a security review.
+Every path in these docs is relative to the base URL. When you sign a request, sign the full path the server receives, starting with `/public/v1/` (see [Authentication](/api-reference/authentication)).
+
+## Networks
+
+| Key prefix | Network | Status |
+|---|---|---|
+| `bfx_test_` | Sepolia (testnet), chain id `11155111` | Available |
+| `bfx_live_` | Ethereum (mainnet) | Not yet available |
+
+Test keys move test tokens on Sepolia only. Call `GET /currencies` for the tokens your key can use.
 
 ## Get started
 
@@ -39,12 +44,15 @@ Phase 1 issues `bfx_test_` keys only, running against the **Sepolia** sandbox. `
     Cross-currency and same-currency sends.
   </Card>
   <Card title="Webhooks" icon="bell" href="/api-reference/webhooks">
-    Subscribe to settlement and payment events.
+    Subscribe to settlement and payment events, and verify each delivery.
+  </Card>
+  <Card title="RFQ for market makers" icon="handshake" href="/api-reference/rfq-market-makers">
+    Quote, sign, and settle firm quotes through the BlankFX RFQ escrow.
   </Card>
 </CardGroup>
 
 <Note>
-The full **endpoint reference** — all 27 endpoints across Account, FX, Transfers, Payment links, Wallets, Contacts, and Webhooks — is generated from the OpenAPI spec and listed under **Endpoints** in the sidebar.
+The full **endpoint reference** — 34 operations across Account, FX, Transfers, Payment links, Wallets, Contacts, and Webhooks — is generated from the OpenAPI spec and listed under **Endpoints** in the sidebar.
 </Note>
 
 ## Scopes

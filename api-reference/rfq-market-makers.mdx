@@ -1,0 +1,359 @@
+---
+title: RFQ for market makers
+description: How a market maker quotes, signs, and settles firm quotes through the BlankFX RFQ escrow.
+---
+
+# RFQ for market makers
+
+BlankFX routes cross-currency trades to market makers as **firm quotes**. You price the trade and sign it; the taker locks their input in the BlankFX RFQ escrow; you fill from your own wallet. BlankFX never holds your funds or your keys.
+
+<Info>
+**Integration model.** BlankFX calls **your** HTTPS server. You expose five endpoints; there is no websocket and nothing for you to push. Settlement happens on-chain against the escrow contract.
+</Info>
+
+| Escrow | Network | Address |
+|---|---|---|
+| `BlankFXRFQEscrow` | Sepolia (testnet), chain id `11155111` | `0x6f8B33Ff200DEe2F3b86cA0b55697c5a4eF11A16` |
+
+Ethereum (mainnet) is not yet available.
+
+## Eligibility
+
+To quote, your **provider address** (the key that signs quotes and fills them) must be:
+
+- **allow-listed on the escrow** (`providerAllowed(provider) == true`), and
+- assigned the **MM** access tier on BlankFX and not suspended.
+
+Both are set by BlankFX during onboarding, together with your endpoint URL and credential. There is no self-serve sign-up. Start with [Broker and market maker onboarding](/broker-mm-onboarding), then email [trading@blankfx.org](mailto:trading@blankfx.org).
+
+The provider address must be an externally owned account (quotes are verified with ECDSA; smart-contract signatures are not supported).
+
+## Pairs
+
+RFQ is for **cross-currency** pairs only: the two tokens must belong to different currencies (for example `USDC → EURC`, `EURC → XSGD`). Same-currency pairs such as `USDC → USDT` never reach you; they trade on the BlankFX pools.
+
+## Endpoints you expose
+
+All requests are JSON (`Content-Type: application/json`). Respond with JSON. On failure, return a non-`2xx` status with `{ "error": "<message>", "code": "<CODE>" }`.
+
+| Method | Path | When BlankFX calls it |
+|---|---|---|
+| `GET` | `/health` | Health checks |
+| `POST` | `/quote` | A taker asks for a price |
+| `POST` | `/quote/{quoteId}/prehedge` | The taker accepts your quote, before they fund the escrow |
+| `POST` | `/quote/{quoteId}/accept` | The taker's funding is confirmed on-chain; you should fill now |
+| `GET` | `/execution/{executionId}/status` | BlankFX checks progress of a fill |
+
+### `GET /health`
+
+```json
+{ "status": "healthy" }
+```
+
+`status` is one of `healthy`, `degraded`, `offline`. This request carries the same authentication headers as the others.
+
+### `POST /quote`
+
+Request:
+
+```json
+{
+  "fromAsset": "USDC",
+  "toAsset": "EURC",
+  "fromAmount": "1000",
+  "beneficiary": "0x1111111111111111111111111111111111111111",
+  "venue": "<your venue id>"
+}
+```
+
+- `fromAmount` is a decimal string in whole token units.
+- `beneficiary` is the taker's wallet. Use it as both `taker` and `beneficiary` in the signed quote.
+- `chainId` may be included; when it is absent, use the settlement chain (`11155111` on Sepolia).
+
+Response:
+
+```json
+{
+  "quote": {
+    "id": "q_8fK2mPq1",
+    "fromAmount": "1000",
+    "toAmount": "921.35",
+    "price": "0.92135",
+    "inversePrice": "1.08537",
+    "expiresAt": "2026-10-22T09:14:18.000Z",
+    "fundableUntil": "2026-10-22T09:17:03.000Z",
+    "settlement": {
+      "protocol": "blankfx-rfq-escrow-v1",
+      "escrow": "0x6f8B33Ff200DEe2F3b86cA0b55697c5a4eF11A16",
+      "quote": {
+        "provider": "0x2222222222222222222222222222222222222222",
+        "taker": "0x1111111111111111111111111111111111111111",
+        "beneficiary": "0x1111111111111111111111111111111111111111",
+        "tokenIn": "0x9Ae0A3978101F507D6eeb3e96CACeF0d1a9475Ec",
+        "tokenOut": "0x5a89F471a2B0cd528F4b221D07c735c24e89dcaA",
+        "amountIn": "1000000000",
+        "minOut": "921350000",
+        "nonce": "73019237446829166101749326312417582933176101563702735470190426389211263287341",
+        "deadline": "1792653423",
+        "chainId": 11155111
+      },
+      "signature": "0x…",
+      "typedData": { "domain": { "…": "…" }, "primaryType": "RFQQuote", "types": { "…": "…" }, "message": { "…": "…" } }
+    }
+  }
+}
+```
+
+| Field | Rule |
+|---|---|
+| `quote.id` | Your quote id. 1–160 characters from `A–Z a–z 0–9 : _ -`. BlankFX uses it in later paths. |
+| `toAmount` | What the taker receives, in whole units. Shown to the taker. |
+| `expiresAt` | How long the price is shown to the taker. Defaults to 15 seconds if omitted. |
+| `fundableUntil` | How long the taker may take to fund the escrow. Capped at `expiresAt` + 15 minutes. If omitted, BlankFX uses `settlement.quote.deadline`. |
+| `settlement.quote` | The signed `RFQQuote` (below). All ten fields are required. Amounts are in the token's smallest unit. |
+| `settlement.signature` | Your EIP-712 signature over `settlement.quote`. |
+| `settlement.escrow` | Optional. If present, it must equal the escrow address above. |
+| `settlement.typedData` or `settlement.quoteHash` | Optional. Lets BlankFX offer the taker Permit2 funding. |
+| `settlement.quote.deadline` | Unix seconds. Must be in the future and no more than 15 minutes ahead when the taker accepts. Set it equal to `fundableUntil`. |
+
+When the taker accepts, BlankFX refuses to proceed if `taker` is not the taker's wallet, `beneficiary` is not the requested beneficiary, or any of the ten fields is missing.
+
+### `POST /quote/{quoteId}/prehedge`
+
+Sent when the taker accepts your quote, before they fund the escrow. Use it to hedge. Headers include `idempotency-key`. Body:
+
+```json
+{
+  "quote": { "id": "q_8fK2mPq1", "…": "your full /quote response object" },
+  "chainId": 11155111,
+  "idempotencyKey": "…",
+  "intentId": "…",
+  "executionId": "…",
+  "escrowExecutionId": "0x…",
+  "ownerWallet": "0x1111111111111111111111111111111111111111",
+  "venue": "<your venue id>"
+}
+```
+
+`quote.id` equals the path `quoteId`. Respond with:
+
+```json
+{ "hedge": { "id": "h_…", "status": "PREHEDGED", "hedgeTxHash": "0x…" } }
+```
+
+Unless agreed otherwise at onboarding, the taker can fund only after your prehedge response reports one of `ACCEPTED`, `CONFIRMED`, `PREHEDGED`, `HEDGED`, `FILLED`, `EXECUTED`, `COMPLETED`, `SUCCESS`, `SUCCEEDED`. An error or any other status stops the taker at this step.
+
+<Warning>
+A taker who has accepted may still never fund the escrow. Size your prehedge with that in mind; an unfunded quote simply expires at `deadline`.
+</Warning>
+
+### `POST /quote/{quoteId}/accept`
+
+Sent once BlankFX has verified the taker's `QuoteEscrowed` event on-chain. This is your signal to fill. Headers include `idempotency-key` (stable for the order, so a retry must not fill twice). Body:
+
+```json
+{
+  "quote": { "id": "q_8fK2mPq1", "…": "your full /quote response object" },
+  "chainId": 11155111,
+  "idempotencyKey": "rfq-final-accept:…",
+  "executionId": "…",
+  "ownerWallet": "0x1111111111111111111111111111111111111111",
+  "escrowFundingTxHash": "0x…",
+  "escrowQuoteTxHash": "0x…",
+  "venue": "<your venue id>"
+}
+```
+
+Respond with:
+
+```json
+{ "execution": { "id": "exec_…", "status": "COMPLETED", "settlementTxHash": "0x…" } }
+```
+
+`execution.id` follows the same character rules as `quote.id`. `status` can be final already, or in progress (then BlankFX polls the status endpoint).
+
+### `GET /execution/{executionId}/status`
+
+```json
+{
+  "execution": {
+    "status": "COMPLETED",
+    "settlementTxHash": "0x…",
+    "hedgeTxHash": "0x…",
+    "failureReason": "",
+    "refundReference": ""
+  }
+}
+```
+
+### Status values
+
+BlankFX maps your `status` (case-insensitive) onto the taker's order:
+
+| Your `status` | Taker's order |
+|---|---|
+| `COMPLETED`, `COMPLETE`, `SETTLED`, `FILLED`, `EXECUTED`, `SUCCESS`, `SUCCEEDED`, `PAID` | `settled` |
+| `FAILED`, `FAIL`, `REJECTED`, `ERROR`, `DECLINED` | `failed` |
+| `EXPIRED`, `TIMEOUT`, `TIMED_OUT` | `expired` |
+| `REFUNDED`, `REFUND_COMPLETE`, `PARTIALLY_REFUNDED` | `refunded` |
+| anything else (for example `ACCEPTED`, `SETTLING`, `PROCESSING`, `CANCELLED`) | `settling` |
+
+Report a final status as soon as you have one; an order stays `settling` until you do.
+
+## Request authentication
+
+Every request BlankFX sends you carries:
+
+| Header | Value |
+|---|---|
+| `Authorization` | `Bearer <your API credential>` |
+| `x-venue` | Your venue identifier, agreed at onboarding |
+| `x-request-timestamp` | ISO-8601 UTC timestamp, e.g. `2026-10-22T09:14:03.120Z` |
+| `x-request-nonce` | A random UUID, unique per request |
+| `x-signature` | `sha256=<hex HMAC-SHA256>` |
+
+The HMAC key is your credential (the same value as the bearer token, unless a separate signing secret is agreed at onboarding). The signed string is five fields joined by `\n`:
+
+```
+<x-request-timestamp>\n<x-request-nonce>\n<METHOD>\n<path>\n<raw body>
+```
+
+- `METHOD` is upper case (`GET`, `POST`).
+- `path` is the endpoint path only, for example `/quote` or `/quote/q_8fK2mPq1/accept`. It excludes your host and any base path in your registered URL.
+- `raw body` is the exact JSON body sent, or empty for `GET`.
+
+```js
+import crypto from 'node:crypto';
+
+function verifyBlankFx(req, rawBody, secret) {
+  const ts = req.headers['x-request-timestamp'];
+  const nonce = req.headers['x-request-nonce'];
+  const sig = String(req.headers['x-signature'] || '').replace(/^sha256=/, '');
+  if (Math.abs(Date.now() - Date.parse(ts)) > 5 * 60 * 1000) return false; // reject stale requests
+  // also reject a nonce you have already seen within that window
+  const path = new URL(req.url, 'http://x').pathname; // strip your own base path if you have one
+  const payload = [ts, nonce, req.method.toUpperCase(), path, rawBody || ''].join('\n');
+  const expected = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+  return sig.length === expected.length && crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected));
+}
+```
+
+Check the bearer token, verify the HMAC, reject timestamps more than 5 minutes old, and reject repeated nonces.
+
+## Signing a firm quote
+
+Quotes are EIP-712 typed data:
+
+| | |
+|---|---|
+| Domain | `{ name: "BlankFX RFQ Escrow", version: "1", chainId, verifyingContract: <escrow address> }` |
+| Primary type | `RFQQuote` |
+
+```
+RFQQuote(address provider,address taker,address beneficiary,address tokenIn,address tokenOut,uint256 amountIn,uint256 minOut,uint256 nonce,uint256 deadline,uint256 chainId)
+```
+
+| Field | Meaning |
+|---|---|
+| `provider` | Your provider address. Must be the signer. |
+| `taker` | The taker's wallet (the `beneficiary` from the request). |
+| `beneficiary` | Where `tokenOut` is delivered (the same wallet). |
+| `tokenIn` / `tokenOut` | Token addresses of `fromAsset` / `toAsset`. |
+| `amountIn` | `fromAmount` in `tokenIn`'s smallest unit. |
+| `minOut` | Exactly what you deliver, in `tokenOut`'s smallest unit. |
+| `nonce` | A random `uint256`. Also used for bulk cancellation. |
+| `deadline` | Unix seconds. Last moment the taker can fund and you can fill. |
+| `chainId` | The settlement chain. Must equal the escrow's chain. |
+
+```ts
+import crypto from 'node:crypto'
+import { privateKeyToAccount } from 'viem/accounts'
+
+const ESCROW = '0x6f8B33Ff200DEe2F3b86cA0b55697c5a4eF11A16'
+const account = privateKeyToAccount(process.env.PROVIDER_KEY as `0x${string}`)
+
+const quote = {
+  provider: account.address,
+  taker: req.beneficiary,
+  beneficiary: req.beneficiary,
+  tokenIn: '0x9Ae0A3978101F507D6eeb3e96CACeF0d1a9475Ec',  // USDC (Sepolia)
+  tokenOut: '0x5a89F471a2B0cd528F4b221D07c735c24e89dcaA', // EURC (Sepolia)
+  amountIn: 1_000_000000n,
+  minOut: 921_350000n,
+  nonce: BigInt('0x' + crypto.randomBytes(32).toString('hex')),
+  deadline: BigInt(Math.floor(Date.now() / 1000) + 180),
+  chainId: 11155111n,
+}
+
+const signature = await account.signTypedData({
+  domain: { name: 'BlankFX RFQ Escrow', version: '1', chainId: 11155111, verifyingContract: ESCROW },
+  primaryType: 'RFQQuote',
+  types: {
+    RFQQuote: [
+      { name: 'provider', type: 'address' },
+      { name: 'taker', type: 'address' },
+      { name: 'beneficiary', type: 'address' },
+      { name: 'tokenIn', type: 'address' },
+      { name: 'tokenOut', type: 'address' },
+      { name: 'amountIn', type: 'uint256' },
+      { name: 'minOut', type: 'uint256' },
+      { name: 'nonce', type: 'uint256' },
+      { name: 'deadline', type: 'uint256' },
+      { name: 'chainId', type: 'uint256' },
+    ],
+  },
+  message: quote,
+})
+```
+
+In the `/quote` response, send `amountIn`, `minOut`, `nonce` and `deadline` as decimal strings. You can check a hash on-chain with `hashQuote(quote)` on the escrow.
+
+## Quote timing
+
+| Window | Meaning | Limit |
+|---|---|---|
+| `expiresAt` | The price is shown to the taker | 15 s if you omit it |
+| `fundableUntil` | The taker can still accept and fund | At most `expiresAt` + 15 min |
+| `deadline` | On-chain: last moment to escrow and to fill | At most 15 min after the taker accepts |
+
+A few minutes (for example 180 seconds) is enough for most takers, including wallets that need several approvals.
+
+## Settlement
+
+<Steps>
+  <Step title="Taker funds the escrow">
+    The taker approves the escrow and calls `escrowQuote(quote, signature)`. The escrow checks your signature, your allow-listing and tier, the deadline, and that the quote was never used, then locks `amountIn` and emits `QuoteEscrowed`.
+  </Step>
+  <Step title="BlankFX confirms and calls you">
+    BlankFX verifies a `QuoteEscrowed` event matching every field of your quote, then calls `POST /quote/{quoteId}/accept`.
+  </Step>
+  <Step title="You fill">
+    From your provider address, call `fillEscrowedQuote(quote, signature)` on the escrow **before `deadline`**. You must have approved the escrow to spend `tokenOut`. In one transaction the escrow sends exactly `minOut` of `tokenOut` from you to the beneficiary and releases the escrowed `tokenIn` to you, then emits `QuoteFilled`.
+  </Step>
+  <Step title="If you don't fill">
+    After `deadline`, the taker calls `refundExpiredQuote(quoteHash)` and gets their `tokenIn` back. You can no longer fill.
+  </Step>
+</Steps>
+
+```
+event QuoteEscrowed(bytes32 indexed quoteHash, address indexed taker, address indexed provider, address beneficiary, address tokenIn, address tokenOut, uint256 amountIn, uint256 minOut, uint256 nonce, uint256 deadline)
+event QuoteFilled(bytes32 indexed quoteHash, address indexed taker, address indexed provider, address beneficiary, address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut)
+event QuoteRefunded(bytes32 indexed quoteHash, address indexed taker, address tokenIn, uint256 amountIn)
+```
+
+A quote hash settles once. Pausing the escrow stops new escrows, but never blocks a fill of an already-escrowed quote or a refund.
+
+### Cancelling quotes
+
+- `invalidateQuote(quoteHash)` cancels one quote.
+- `invalidateUnorderedNonces(wordPos, mask)` cancels a batch by nonce, Permit2-style (`wordPos = nonce >> 8`, bit = `nonce & 0xff`).
+
+Both only stop **new** escrows. Once a taker has escrowed against a quote, you are committed to it until `deadline`.
+
+## Fees
+
+The escrow charges no fee: the taker pays exactly `amountIn`, and the beneficiary receives exactly `minOut`. Your margin is in your price. Any maker fees are set in your term sheet.
+
+## Reference implementation
+
+A reference market-maker server that implements these endpoints, request verification and quote signing is available on request as a template repository. Ask at [trading@blankfx.org](mailto:trading@blankfx.org).

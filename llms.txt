@@ -1,52 +1,49 @@
 # BlankFX
 
-> Stablecoin FX infrastructure for businesses that need fast settlement, tight pricing, and a clean audit trail.
-
-BlankFX is a stablecoin FX layer for business flows. It combines routing, pricing, compliance controls, and liquidity into one settlement system.
+> Get paid in any stablecoin. BlankFX converts and settles stablecoins within and across currencies on-chain, with published fees and a full audit trail. Non-custodial: users sign every movement from their own wallet.
 
 ## Key concepts
 
-- Oracle-anchored pricing: Swap rates are derived from on-chain oracle feeds, not AMM pool ratios.
-- Gasless swaps: Users sign an off-chain message. A relay service submits the transaction and pays gas.
-- Single-sided liquidity: Deposit one stablecoin to earn yield. No token pairing required.
-- USD Hub model: USD stablecoins can share liquidity while cross-currency swaps route through the relevant pools.
+- One pool per currency: USD (USDC, USDT, RLUSD, OUSD), EUR (EURC, EURAU, EURI), CHF (CHFAU), SGD (XSGD), JPY (JPYSC, JPYC).
+- Same-currency swaps: 1:1 minus a fee (base 0.05% USD pool, 0.10% others, plus up to 1.50% when the bought coin is short).
+- Cross-currency swaps: oracle mid-rate (Chainlink EUR/JPY; BlankFX relayed CHF/SGD) adjusted by a PMM pricing curve (k = 0.1), minus the fee. More than 2% from oracle is refused; such tickets go to RFQ.
+- Fee split: 80% to pool suppliers, 20% to BlankFX treasury. Transfer fee 0.05% when delivering to another wallet.
+- Gasless swaps from $100 via Permit2 + relay router; BlankFX pays gas.
+- RFQ: market makers sign firm EIP-712 quotes; taker funds an on-chain escrow; market maker fills.
+- Pool share tokens: BFX-USD, BFX-EUR, BFX-CHF, BFX-SGD, BFX-JPY.
 
-## Architecture
+## Networks
 
-- BlankFXRouterV3: Entry point for all swaps. Routes to the correct pool based on token pair.
-- BlankFXUSDHub: Holds USD stablecoin liquidity (USDC, USDT, RLUSD).
-- BlankFXFXPool: Foreign currency pools (e.g. EUR). Each currency gets its own pool.
-- BlankFXAccess: Tiered permission system. Users must be registered to trade.
-
-## Swap types
-
-- USD-USD: Direct swap within the USD Hub (e.g. USDC to USDT). Near 1:1 rate.
-- Cross-currency: Routes through USD Hub and foreign pool via oracle rate (e.g. USDC to EURC).
-- Intra-pool: Swap between tokens in the same foreign pool.
-
-## Earning yield
-
-Deposit stablecoins into a pool to receive receipt tokens (e.g. `bUSDx`). Trading fees accrue to the pool, increasing the exchange rate between receipt tokens and the underlying stablecoin. No claiming required.
-
-## Current status
-
-Live on Ethereum Sepolia (testnet). Mainnet and additional network deployments are planned.
+- Sepolia (testnet): live, chainId 11155111.
+- Ethereum (mainnet): planned.
 
 ## Machine-readable reference
 
-- Token list: /reference/tokens.json
-- Contract addresses: /reference/contracts.json
+- Token list: https://github.com/benjiusi/docs/blob/main/reference/tokens.json
+- Contract addresses: https://github.com/benjiusi/docs/blob/main/reference/contracts.json
+- OpenAPI spec: https://api.blankfx.org/public/v1/openapi.json
 
 ## Documentation
 
+- What is BlankFX: /introduction
 - Getting started: /getting-started
+- How the exchange works (issuers, market makers): /how-it-works
 - Swaps: /swaps
 - Earn: /earn
-- Fees: /fees
 - Agent payments (x402): /agent-payments
-- Paying a payment link with x402 (developers): /api-reference/x402
+- Fees: /fees
+- Point of sale: /pos
 - Contracts: /contracts
+- Supported tokens: /tokens
 - FAQ: /faq
 - Compliance & KYC: /compliance
-- Stablecoin Listing Requirements: /listing-requirements
-- Broker & Market-Maker Onboarding: /broker-mm-onboarding
+- Stablecoin listing requirements: /listing-requirements
+- Broker & market-maker onboarding: /broker-mm-onboarding
+- API overview: /api-reference/overview
+- API authentication: /api-reference/authentication
+- API errors, idempotency & rate limits: /api-reference/errors
+- FX trading (AMM + RFQ): /api-reference/fx-flow
+- RFQ for market makers: /api-reference/rfq-market-makers
+- Transfers: /api-reference/transfers
+- Paying a payment link with x402: /api-reference/x402
+- Webhooks: /api-reference/webhooks

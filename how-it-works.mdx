@@ -1,0 +1,99 @@
+---
+title: How the exchange works
+description: For stablecoin issuers, market makers and integrators - how BlankFX holds, prices and controls listed stablecoins.
+---
+
+# How the exchange works
+
+This page explains, for issuers and market makers, what happens to a stablecoin once it is listed on BlankFX: where it is held, how it is priced, what fees apply and what controls exist.
+
+## Two venues
+
+| Venue | What it does | Who provides liquidity |
+|---|---|---|
+| **Pools** | Instant, atomic swaps at a published price. Used by the app, payment links, point of sale and the API. | Suppliers who deposit stablecoins into currency pools ([Earn](/earn)) |
+| **RFQ** | Firm quotes for cross-currency tickets, settled through an on-chain escrow. | Onboarded market makers ([RFQ for market makers](/api-reference/rfq-market-makers)) |
+
+Both are non-custodial: users sign every movement from their own wallet. BlankFX never takes custody of user funds.
+
+## Currency pools
+
+There is one pool per fiat currency. All listed coins of that currency sit in the same pool:
+
+| Pool | Coins | Oracle |
+|---|---|---|
+| USD | USDC, USDT, RLUSD, OUSD | none needed (USD is the base) |
+| EUR | EURC, EURAU, EURI | Chainlink EUR/USD |
+| CHF | CHFAU | BlankFX relayed CHF/USD feed |
+| SGD | XSGD | BlankFX relayed SGD/USD feed |
+| JPY | JPYSC, JPYC | Chainlink JPY/USD |
+
+Addresses: [Contracts](/contracts) and [Supported tokens](/tokens).
+
+The pool tracks, per coin, how much it holds (**reserve**) and how much it owes suppliers in that coin (**liability**). Reserve divided by liability is the coin's **coverage**. Coverage drives pricing.
+
+## Same-currency swaps (e.g. USDC → USDT)
+
+- Priced at **1:1 minus a fee**. There is no FX rate in a same-currency swap.
+- Fee = base fee (0.05% in the USD pool, 0.10% in the others) + an inventory fee of up to 1.50%, charged only when the coin being bought falls below a normal coverage band.
+- The pool will not pay a coin out below **5% coverage**. At that point that coin can be swapped into the pool but not out of it until it is replenished.
+
+**What this means for an issuer:** if your coin is in demand, it gets scarce in the pool and buying it gets more expensive, which draws in arbitrage and supply. If your coin is being sold heavily, it accumulates in the pool. Pool suppliers carry that exposure, which is why listing due diligence matters.
+
+## Cross-currency swaps (e.g. USDC → EURC)
+
+1. The rate starts at the **oracle mid-rate**.
+2. A **pricing curve** (a proactive market-maker curve, k = 0.1) moves the rate against the trade as size grows and as the output pool's coverage falls. In a balanced pool, small trades price very close to the oracle.
+3. The fee is deducted (base 0.10% + inventory fee as above).
+4. If the resulting rate would be more than **2% from the oracle**, the pool refuses the trade. Large tickets like that go to RFQ.
+
+Settlement is atomic: the input is taken and the output delivered in one transaction, or nothing happens.
+
+## Oracles
+
+| Feed | Source | Considered stale after |
+|---|---|---|
+| EUR/USD, JPY/USD | Chainlink | 24 hours |
+| CHF/USD, SGD/USD | BlankFX relayed feed (published on-chain by BlankFX from market data) | 4 hours |
+
+When a feed is stale, **the pool stops quoting cross-currency swaps** for that currency. It fails closed rather than trade on an old price. Same-currency swaps in that pool are unaffected because they don't use the oracle.
+
+On Ethereum (mainnet) BlankFX will use Chainlink wherever a feed exists for the currency.
+
+## Fees and where they go
+
+| Fee | Rate | Goes to |
+|---|---|---|
+| Swap base fee | 0.05% (USD pool), 0.10% (EUR, CHF, SGD, JPY) | 80% pool suppliers, 20% BlankFX treasury |
+| Inventory fee | 0 to 1.50%, only when the coin bought is short | 80% pool suppliers, 20% BlankFX treasury |
+| Transfer fee | 0.05%, only when delivering to another wallet | BlankFX treasury |
+| RFQ escrow | none | — |
+
+All rates are contract parameters, published on-chain and bounded in code (the treasury share cannot exceed 50%, the transfer fee cannot exceed 0.50%). Full detail: [Fees](/fees).
+
+## Controls
+
+| Control | What it does |
+|---|---|
+| **Pause** | Stops swaps, deposits **and withdrawals** in a pool (or new escrows on RFQ) during an incident, until unpaused. |
+| **Remove a coin** | The admin can delist a coin from a pool. We announce delistings with a wind-down window wherever user safety allows (see [listing requirements](/listing-requirements#after-youre-listed)). |
+| **Access tiers** | Unverified wallets are capped at $10,000 per rolling 30 days on-chain; verified wallets are not capped on-chain. Market makers need the market-maker tier. See [Contracts](/contracts#access-tiers). |
+| **Upgrades** | Pools are upgradeable proxies. A timelock on upgrades is planned before mainnet. |
+| **Parameter bounds** | Fees, coverage floors and limits can only be set within hard-coded ranges. |
+
+**Depeg protection.** A per-coin peg monitor, which stops quoting a coin when its market price leaves a band around par, is in development. Until it ships, pools price same-currency coins at 1:1 and rely on the coverage-based fee and the 5% floor.
+
+## If an issuer freezes or pauses its token
+
+Many stablecoins let the issuer freeze addresses or pause transfers. If a pool or escrow address were frozen for your coin, that pool could no longer move your coin. Swaps and withdrawals in your coin would fail, and suppliers' value in your coin would be stuck until the freeze is lifted. Other coins in the pool keep working, and suppliers can still withdraw in them.
+
+For this reason listed issuers must tell us before using a freeze or pause power that affects BlankFX contracts. See [listing requirements](/listing-requirements#after-youre-listed).
+
+## Networks
+
+| Network | Status |
+|---|---|
+| Sepolia (testnet) | Live |
+| Ethereum (mainnet) | Planned |
+
+On Sepolia the listed coins are test deployments. On Ethereum, BlankFX lists only each issuer's official contract.

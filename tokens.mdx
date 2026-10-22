@@ -1,46 +1,52 @@
 ---
 title: Supported tokens
-description: Stablecoins supported on BlankFX with contract addresses and decimals.
+description: Stablecoins listed on BlankFX, by currency pool, with Sepolia (testnet) addresses and decimals.
 ---
 
 # Supported tokens
 
-## Live tokens
+## Listed stablecoins
 
-| Token | Symbol | Decimals | Currency | Address |
-|-------|--------|----------|----------|---------|
-| USD Coin | USDC | 6 | USD | `0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238` |
-| Tether USD | USDT | 6 | USD | `0xaA8E23Fb1079EA71e0a56F48a2aA51851D8433D0` |
-| EUR Coin | EURC | 6 | EUR | `0x08210F9170F89Ab7658F0B5E3fF39b0E03C594D4` |
-| Permit2 | — | — | — | `0x000000000022D473030F116dDEE9F6B43aC78BA3` |
+| Token | Currency | Decimals | Sepolia (testnet) address |
+|---|---|---|---|
+| USDC | USD | 6 | `0x9Ae0A3978101F507D6eeb3e96CACeF0d1a9475Ec` |
+| USDT | USD | 6 | `0x4a8a33C88ad2635dd885E7c03f9e8e7eF6387647` |
+| RLUSD | USD | 18 | `0xB684B3B9b15470A3ac9398B6f7288385118EfdEC` |
+| OUSD | USD | 6 | `0x54AD899fB09FDd86c8A00bC7b2bfb1b93c294217` |
+| EURC | EUR | 6 | `0x5a89F471a2B0cd528F4b221D07c735c24e89dcaA` |
+| EURAU | EUR | 18 | `0x0020a153D8486429d4755E27a4E182Dc15D25dEc` |
+| EURI | EUR | 18 | `0x2C84962d07b67801E562b6c52B2aeE72562e71A7` |
+| CHFAU | CHF | 6 | `0x4009FC0dd6ECAe7Bc123C050200bA3324F19d3C9` |
+| XSGD | SGD | 6 | `0xb05BaC535C7Fe71aa5047415547EA8a85EcA29F5` |
+| JPYSC | JPY | 18 | `0x0B981dF6457F7Ef629a4eDEcE8007ecCe0154FCe` |
+| JPYC | JPY | 18 | `0xE7121941f695E02f045412babCB2972B107bd250` |
+
+Machine-readable: [`reference/tokens.json`](https://github.com/benjiusi/docs/blob/main/reference/tokens.json).
 
 <Info>
-RLUSD is supported in the protocol but not currently available on Sepolia faucets. It will be included in the Mainnet token set.
+The Sepolia (testnet) tokens are test deployments, not the issuers' own contracts. On Ethereum (mainnet), BlankFX will list each issuer's official contract, sourced from the issuer. Mainnet addresses will be published on this page.
 </Info>
 
-## Planned tokens
-
-| Token | Symbol | Currency | Status |
-|-------|--------|----------|--------|
-| Swiss Franc (Aura) | CHFAU | CHF | Coming soon |
-| British Pound Token | GBPT | GBP | Coming soon |
+Decimals differ between tokens (6 or 18). Always read `decimals()` from the contract rather than assuming 6.
 
 ## How tokens are grouped
 
-Tokens are organized by currency into pools:
+Tokens are grouped by currency into one pool per currency:
 
-- **USD Pool** accepts USDC and USDT (RLUSD on mainnet). Swaps between these tokens happen at near 1:1 rates.
-- **EUR Pool** accepts EURC. Cross-currency swaps (e.g. USDC → EURC) use the oracle FX rate.
+| Pool | Tokens |
+|---|---|
+| USD | USDC, USDT, RLUSD, OUSD |
+| EUR | EURC, EURAU, EURI |
+| CHF | CHFAU |
+| SGD | XSGD |
+| JPY | JPYSC, JPYC |
 
-Each new currency added to BlankFX gets its own pool. This keeps pricing clean and prevents cross-currency impermanent loss.
+Swaps inside a pool are 1:1 minus a fee. Swaps between pools use the oracle FX rate. See [Swaps](/swaps) and [How the exchange works](/how-it-works).
 
-## Receipt tokens (LP positions)
+## Pool share tokens
 
-When you deposit into a pool, you receive a receipt token representing your share:
+Supplying to a pool mints its share token: `BFX-USD`, `BFX-EUR`, `BFX-CHF`, `BFX-SGD`, `BFX-JPY`. Share tokens grow in value as the pool earns fees. See [Earn](/earn).
 
-| Pool | Receipt Token | Description |
-|------|--------------|-------------|
-| USD Pool | `bUSDx` | LP receipt for the USD liquidity pool |
-| EUR Pool | `bEURx` | LP receipt for the EUR liquidity pool |
+## Listing a new stablecoin
 
-Receipt tokens accrue value as trading fees accumulate in the pool. When you withdraw, you redeem your `bUSDx` or `bEURx` for the underlying stablecoins at the current exchange rate — which will be higher than when you deposited, reflecting earned yield.
+Issuers: see [Stablecoin listing requirements](/listing-requirements).

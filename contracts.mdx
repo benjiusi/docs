@@ -1,53 +1,71 @@
 ---
 title: Contracts
-description: Deployed contract addresses and verification status.
+description: BlankFX contract addresses on Sepolia (testnet), how they fit together, and their admin controls.
 ---
 
 # Contracts
 
-## Deployed contracts (Sepolia testnet)
+## Sepolia (testnet)
 
 | Contract | Address | Purpose |
-|----------|---------|---------|
-| BlankFXAccess | `0xc3e9A233861a5f5E606aF61fEa5907a0776aA411` | Access control and user permissions |
-| BlankFXUSDHub | `0xC081279f1B241f2530bde7bF46430A4e108C4FfF` | USD liquidity pool (USDC, USDT, RLUSD) |
-| BlankFXFXPool (EUR) | `0xd73C964F0cEb9eA46973292383306c21bd53B23C` | EUR liquidity pool (EURC) |
-| BlankFXRouterV3 | `0x171bB65D294ae2F9fC10e77A6AC35141baDd4bD9` | Swap router — routes trades through hub and pools |
-| BlankFXRelayRouter (Gasless) | `0x0C092B9D0D4E34FCd64e518AE8F58ccfC9fD4Ed4` | Gasless relay router via Permit2 |
-| Permit2 | `0x000000000022D473030F116dDEE9F6B43aC78BA3` | Uniswap Permit2 — used for gasless approvals |
+|---|---|---|
+| BlankFXRouterV4 | `0x2a1d03A2980AB49936eECa88E64DE87A3E170aAa` | Swap and payment entry point; routes between pools, charges the transfer fee |
+| Relay router | `0xacF2d27a7162155dfFE40470aa4d31fA9F33Bf13` | Executes gasless swaps signed via Permit2 |
+| USD pool (BlankFXUSDHub) | `0x89AD6DcE3d6FA1c70FFCC47F6cfC212F286d1803` | USD stablecoins; share token `BFX-USD` |
+| EUR pool (BlankFXFXPool) | `0xc9b3Ffd5A2039cFA3146Ae504f00ffb2Eaf065Ce` | EUR stablecoins; share token `BFX-EUR` |
+| CHF pool (BlankFXFXPool) | `0xCB970f0D3A2c744b0aBCbA25246D61088a02467d` | CHF stablecoins; share token `BFX-CHF` |
+| SGD pool (BlankFXFXPool) | `0x69e472dB8cB1Ee84C950965889D2d58e4605Bb03` | SGD stablecoins; share token `BFX-SGD` |
+| JPY pool (BlankFXFXPool) | `0x745B60F243d6BCAcB90F61aCa2f82FdDD521dc06` | JPY stablecoins; share token `BFX-JPY` |
+| RFQ escrow | `0x6f8B33Ff200DEe2F3b86cA0b55697c5a4eF11A16` | Holds the taker's funds until a market maker fills a firm quote |
+| Payment router | `0x23cBA29C8C232d2340692AC3afE7761c019c56Ee` | Settles payment links and point-of-sale payments |
+| Transfer forwarder | `0x2Adf10C1D3B1B374d3DF7c2780ccCc5B8242F576` | Same-currency transfers |
+| Risk engine | `0x841c322dc9d12B454Ba1ac1b57Fbeb45f5623a7B` | Per-pool exposure limits checked on trades |
+| BlankFXAccess | `0x58F580a7c1a8Da6055D408b6c2Ca519E1CbF9Ed8` | Wallet access tiers and limits |
+| Permit2 (Uniswap) | `0x000000000022D473030F116dDEE9F6B43aC78BA3` | Canonical token-approval contract used for gasless signing |
 
-<Info>
-All contracts are deployed on **Sepolia testnet**. Mainnet deployment is pending audit completion.
-</Info>
+Token addresses are on [Supported tokens](/tokens). Machine-readable copies: [`/reference/contracts.json`](https://github.com/benjiusi/docs/blob/main/reference/contracts.json) and [`/reference/tokens.json`](https://github.com/benjiusi/docs/blob/main/reference/tokens.json).
 
-## Architecture
+## Ethereum (mainnet)
+
+Not deployed yet. Mainnet addresses will be published here, on this page only. Treat any other source as unofficial.
+
+## How they fit together
 
 ```
-User Wallet
-    │
-    ▼
-BlankFXRouterV3 (swap entry point)
-    │           BlankFXRelayRouter (gasless path via Permit2)
-    │
-    ├── BlankFXUSDHub (USD stablecoin pool)
-    │
-    └── BlankFXFXPool (foreign currency pools, e.g. EUR)
-    
-BlankFXAccess (permission checks on every trade)
+Wallet ──signs──► Relay router (gasless, Permit2) ─┐
+Wallet ──tx────► BlankFXRouterV4 ◄────────────────┘
+                     │
+                     ├── USD pool
+                     ├── EUR / CHF / SGD / JPY pools  (oracle + pricing curve)
+                     └── Payment router (payment links, point of sale)
+
+Taker ──funds──► RFQ escrow ◄──fills── Market maker
+
+BlankFXAccess + Risk engine: checked on trades and deposits
 ```
 
-All swaps go through the Router. The Router checks access permissions, then routes the trade to the appropriate pool(s) based on the token pair.
+## Access tiers
 
-For gasless swaps, users sign an off-chain Permit2 message and the BlankFXRelayRouter submits the transaction on their behalf.
+Every wallet has an on-chain access tier:
 
-## Access control
+| Tier | What it can do |
+|---|---|
+| Unverified | Swap and pay up to **$10,000 per rolling 30 days** without registering |
+| Retail / Corporate | Verified wallets: no on-chain volume cap; can supply liquidity |
+| Market maker | Required to fill RFQ quotes |
 
-BlankFX uses a tiered access system. Users must be registered to trade. Access tiers determine maximum trade sizes and available features.
+The app and API apply additional off-chain limits (for example, unverified payment value of $2,000 per day). See [Compliance & KYC](/compliance).
 
-## Audit status
+## Controls
 
-Contracts have not yet been formally audited. A third-party audit is planned before mainnet deployment.
+- **Pause.** Each pool and the RFQ escrow can be paused by the admin in an incident. A paused pool stops swaps, deposits and withdrawals until it is unpaused.
+- **Upgradeability.** The pools and the access contract are upgradeable proxies (UUPS); the routers are not upgradeable and are replaced by redeploying. A timelock on upgrades is planned before mainnet, so changes are announced before they take effect.
+- **Parameter limits.** Fee and risk parameters can only be set within hard-coded bounds (for example, the treasury share of fees cannot exceed 50%, the transfer fee cannot exceed 0.50%).
+
+## Audit
+
+An external security audit is in progress. Findings raised so far have been fixed on Sepolia. Mainnet deployment waits for the audit to close.
 
 <Warning>
-BlankFX is currently deployed on Sepolia testnet only. Do not send real funds to these addresses.
+These are **Sepolia (testnet)** contracts holding test tokens. Do not send real funds to them.
 </Warning>

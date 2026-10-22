@@ -5,27 +5,36 @@ description: The non-custodial quote → accept → sign → submit flow across 
 
 # FX trading
 
-FX runs across two rails behind one flow: the **AMM** (indicative quotes, gasless Permit2 relay) and **RFQ** (firm market-maker quotes, on-chain escrow). Both are non-custodial — you sign the value operation yourself.
+FX runs across two rails behind one flow: the **AMM** (indicative pool quotes, gasless Permit2 relay) and **RFQ** (firm market-maker quotes, on-chain escrow). Both are non-custodial — you sign the value operation yourself.
 
 <Info>
-**Supported assets are environment-specific.** Call `GET /currencies` for the live set. Sepolia currently serves e.g. `USDC`, `USDT`, `EURC`; symbols like `EURx` are **not** valid and return `400 unsupported_asset`. The examples below use `USDC → EURC`.
+**Supported assets depend on the network.** Call `GET /currencies` for the live set. On Sepolia (testnet) this includes `USDC`, `USDT` and `EURC`. An unknown symbol or an unquotable pair returns `502 no_quotes` from `POST /fx/quotes`; the same asset on both sides returns `400 invalid_request`. The examples below use `USDC → EURC`.
 </Info>
 
 <Warning>
-**Signer + permissions.** Value ops are signed by one of your **registered signer wallets** — your primary by default; pass `source_wallet` to target a specific one. The account must be permitted (KYC / launch-access) for the action, or the op is refused fail-closed with `403 "Source wallet is not permitted for swap|pay"`. Register a signer first via `POST /wallets`.
+**Signer + permissions.** Value operations are signed by one of your **registered signer wallets** — your primary by default. On the AMM you can pass `source_wallet` on accept to use another registered signer; RFQ always uses your primary signer. If the account is not permitted for the action (identity verification required, wallet suspended, or over the unverified daily cap), the call is refused with `403 upstream_error`. Register a signer first via `POST /wallets`.
 </Warning>
 
 ## The flow
 
 ```
 POST /fx/quotes             → indicative AMM + firm RFQ quotes for a pair
-POST /fx/quotes/{id}/accept → locks the quote, creates an order, returns EIP-712 to sign
-POST /fx/orders/{id}/submit → { signature }  (AMM: relayer broadcasts your signed Permit2 order)
+POST /fx/quotes/{id}/accept → creates an order, returns the payload to sign   (Idempotency-Key required)
+POST /fx/orders/{id}/submit → { signature }  (AMM: the relayer broadcasts your signed Permit2 order)
                               or { tx_hash }  (RFQ: you broadcast the escrow-funding tx; we verify it)
-GET  /fx/orders/{id}        → poll to `settled`
+GET  /fx/orders/{id}        → poll until the order reaches a final state
 ```
 
-Order states: `quoted → accepted → awaiting_funding → funded → settling → settled` (or `failed / expired / refunded`). `route` is `"amm"` or `"rfq"`; RFQ quotes are firm, AMM quotes indicative.
+`POST /fx/quotes` takes `{ "sell_asset": "USDC", "buy_asset": "EURC", "amount": "100" }` and returns up to one quote per rail. Each quote has `route` (`"amm"` or `"rfq"`) and `firm` (`true` for RFQ, `false` for AMM). RFQ quotes are offered only for **cross-currency** pairs (for example USD → EUR); a same-currency pair such as `USDC → USDT` quotes on the AMM only.
+
+## Order states
+
+| Rail | Path |
+|---|---|
+| AMM | `accepted → settling → settled` or `failed` |
+| RFQ | `awaiting_funding → funded → settling → settled`, or `failed` / `expired` / `refunded` |
+
+`settled`, `failed`, `expired` and `refunded` are final. RFQ `funded` is brief: as soon as your funding is verified, BlankFX hands the order to the market maker and it moves to `settling`. For RFQ, `GET /fx/orders/{id}` re-checks the market maker's status on every call, so poll it until the order is final.
 
 ## AMM — gasless relay
 
@@ -39,29 +48,127 @@ The accept response returns a `permit2_witness` payload:
   "signing": {
     "type": "permit2_witness",
     "order": { "signer": "0x…", "tokenIn": "0x…", "tokenOut": "0x…", "amountIn": "…", "minAmountOut": "…", "recipient": "0x…", "pool": "0x…", "deadline": "…", "nonce": "…" },
-    "relay": { "chainId": 11155111, "permit2": "0x…", "relayRouter": "0x…", "witnessTypeString": "GaslessOrder witness)GaslessOrder(...)" }
+    "relay": { "chainId": 11155111, "relayRouter": "0x…", "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3", "witnessTypeString": "…" }
+  },
+  "quote": { "amountOut": "…", "feeBps": "…", "…": "…" }
+}
+```
+
+`relay.witnessTypeString` is exactly:
+
+```
+GaslessOrder witness)GaslessOrder(address signer,address tokenIn,address tokenOut,uint256 amountIn,uint256 minAmountOut,address recipient,address pool,uint256 deadline,uint256 nonce)TokenPermissions(address token,uint256 amount)
+```
+
+Sign it as a Permit2 `PermitWitnessTransferFrom`:
+
+| Field | Value |
+|---|---|
+| Domain | `{ name: "Permit2", chainId: relay.chainId, verifyingContract: relay.permit2 }` (no `version`) |
+| `permitted` | `{ token: order.tokenIn, amount: order.amountIn }` |
+| `spender` | `relay.relayRouter` |
+| `nonce`, `deadline` | `order.nonce`, `order.deadline` |
+| `witness` | the `order` object, type `GaslessOrder` |
+
+```ts
+const { order, relay } = accept.signing
+const signature = await wallet.signTypedData({
+  domain: { name: 'Permit2', chainId: relay.chainId, verifyingContract: relay.permit2 },
+  primaryType: 'PermitWitnessTransferFrom',
+  types: {
+    PermitWitnessTransferFrom: [
+      { name: 'permitted', type: 'TokenPermissions' },
+      { name: 'spender', type: 'address' },
+      { name: 'nonce', type: 'uint256' },
+      { name: 'deadline', type: 'uint256' },
+      { name: 'witness', type: 'GaslessOrder' },
+    ],
+    TokenPermissions: [
+      { name: 'token', type: 'address' },
+      { name: 'amount', type: 'uint256' },
+    ],
+    GaslessOrder: [
+      { name: 'signer', type: 'address' },
+      { name: 'tokenIn', type: 'address' },
+      { name: 'tokenOut', type: 'address' },
+      { name: 'amountIn', type: 'uint256' },
+      { name: 'minAmountOut', type: 'uint256' },
+      { name: 'recipient', type: 'address' },
+      { name: 'pool', type: 'address' },
+      { name: 'deadline', type: 'uint256' },
+      { name: 'nonce', type: 'uint256' },
+    ],
+  },
+  message: {
+    permitted: { token: order.tokenIn, amount: BigInt(order.amountIn) },
+    spender: relay.relayRouter,
+    nonce: BigInt(order.nonce),
+    deadline: BigInt(order.deadline),
+    witness: { ...order, amountIn: BigInt(order.amountIn), minAmountOut: BigInt(order.minAmountOut), deadline: BigInt(order.deadline), nonce: BigInt(order.nonce) },
+  },
+})
+```
+
+Then `POST /fx/orders/{id}/submit { "signature": "0x…" }`. The signer must have approved Permit2 for `tokenIn` once (a standard ERC-20 `approve` to the Permit2 contract). The relayer only broadcasts your signed order — it cannot move funds without your signature, and the contract rejects a signature that doesn't match the exact order.
+
+## RFQ — self-broadcast escrow funding
+
+RFQ differs at the submit step: **you** broadcast the escrow-funding transaction from your wallet (it costs you gas), then post its `tx_hash`. The accept response carries everything you need:
+
+```json
+{
+  "order_id": "…",
+  "route": "rfq",
+  "state": "awaiting_funding",
+  "signing": {
+    "type": "rfq_escrow_funding",
+    "funding": {
+      "escrow": "0x6f8B33Ff200DEe2F3b86cA0b55697c5a4eF11A16",
+      "quote": { "provider": "0x…", "taker": "0x…", "beneficiary": "0x…", "tokenIn": "0x…", "tokenOut": "0x…", "amountIn": "…", "minOut": "…", "nonce": "…", "deadline": "…", "chainId": 11155111 },
+      "signature": "0x…",
+      "quoteHash": "0x…",
+      "permit2Funding": { "enabled": false, "reason": "…" },
+      "…": "…"
+    },
+    "relay": { "chainId": 11155111, "escrow": "0x6f8B…1A16", "fundingMethod": "escrowQuote" }
   }
 }
 ```
 
-Sign the `order` as a Permit2 `PermitWitnessTransferFrom` using `witnessTypeString`, then `POST /fx/orders/{id}/submit { signature }`. The relayer only broadcasts your signed order — it cannot move funds without your signature, and the on-chain contract rejects a signature that doesn't match the exact order.
-
-## RFQ — self-broadcast escrow funding
-
-RFQ differs at the submit step: **you** broadcast the escrow-funding transaction (the MM settles against it), then post its `tx_hash`. The accept response's `signing.funding` carries everything you need.
+`funding.quote` is the market maker's signed firm quote, and `funding.signature` is the market maker's signature over it. `quote.taker` and `quote.beneficiary` are your primary signer wallet; `quote.minOut` is the exact amount of `tokenOut` you receive.
 
 <Steps>
-  <Step title="Sign the Permit2 witness">
-    Sign a Permit2 `PermitWitnessTransferFrom` with your registered signer (`= quote.taker`), same Permit2 domain as the AMM path, witness type `RfqEscrowFunding(address signer,bytes32 executionId,address escrow,bytes32 quoteHash,address token,uint256 amount,uint256 deadline,uint256 nonce)`.
+  <Step title="Approve the escrow">
+    From `quote.taker`, ERC-20 `approve` the escrow (`funding.escrow`) for at least `quote.amountIn` of `quote.tokenIn`. (Sepolia `USDT` refuses a change from one non-zero allowance to another; set it to `0` first.)
   </Step>
-  <Step title="Broadcast the funding tx yourself">
-    Call `escrowQuoteWithPermit2(quote, providerSignature, funding, permit2Signature)` on `funding.escrow`. This tx costs you gas — RFQ funding is not relayed.
+  <Step title="Fund the escrow yourself">
+    From the same wallet, call `escrowQuote(funding.quote, funding.signature)` on `funding.escrow` before `quote.deadline`. The escrow locks your `tokenIn` and emits `QuoteEscrowed`.
   </Step>
   <Step title="Submit the tx hash">
-    `POST /fx/orders/{id}/submit { "tx_hash": "0x…" }` — the backend verifies the on-chain `QuoteEscrowed` event before advancing to `funded → settled`.
+    `POST /fx/orders/{id}/submit { "tx_hash": "0x…" }`. BlankFX checks the transaction contains a `QuoteEscrowed` event matching this quote, marks the order `funded`, and asks the market maker to fill. The market maker then calls `fillEscrowedQuote`, which pays `quote.minOut` of `tokenOut` to the beneficiary and releases your escrowed `tokenIn` to the market maker in the same transaction.
   </Step>
 </Steps>
 
-<Note>
-The `RfqEscrowFunding` field order must match `witnessTypeString` exactly, or the escrow rejects the signature.
-</Note>
+### Permit2 funding variant
+
+Some environments also offer funding through Permit2. Use it **only** when `signing.funding.permit2Funding.enabled` is `true`; `relay.fundingMethod` stays `escrowQuote` either way, so don't use it as the signal. When enabled, `permit2Funding` carries `permit2`, `witnessTypeString` and a `funding` struct. Sign a Permit2 `PermitWitnessTransferFrom` with domain `{ name: "Permit2", chainId, verifyingContract: permit2Funding.permit2 }`, `permitted = { token: quote.tokenIn, amount: quote.amountIn }`, `spender` = the escrow, `nonce` / `deadline` = `permit2Funding.funding.nonce` / `.deadline`, and witness type `RfqEscrowFunding`:
+
+```
+RfqEscrowFunding witness)RfqEscrowFunding(address signer,bytes32 executionId,address escrow,bytes32 quoteHash,address token,uint256 amount,uint256 deadline,uint256 nonce)TokenPermissions(address token,uint256 amount)
+```
+
+Then call `escrowQuoteWithPermit2(funding.quote, funding.signature, permit2Funding.funding, permit2Signature)` and submit the `tx_hash` as above. The field order must match the witness type string exactly, or the escrow rejects the signature.
+
+### If the market maker never fills
+
+Nothing refunds automatically. If an order you funded is not filled by `quote.deadline`, call `refundExpiredQuote(quoteHash)` on the escrow from `quote.taker` **after** the deadline has passed. Use `funding.quoteHash` (or `hashQuote(funding.quote)` on the escrow if it is absent). Your locked `tokenIn` comes back in full; the escrow takes no fee. Refunds work even while the escrow is paused.
+
+| Escrow | Network | Address |
+|---|---|---|
+| `BlankFXRFQEscrow` | Sepolia (testnet) | `0x6f8B33Ff200DEe2F3b86cA0b55697c5a4eF11A16` |
+
+## Reading orders
+
+- `GET /fx/orders` returns up to **50 AMM and 50 RFQ** orders, merged and sorted newest first. There is no pagination.
+- `GET /fx/orders/{id}` returns one order. Orders belong to the account that created them; another account gets `404`.
+- Webhooks `fx.order.settled`, `fx.order.failed` and `fx.order.refunded` fire when BlankFX observes those states. `expired` sends no webhook. See [Webhooks](/api-reference/webhooks).

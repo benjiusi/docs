@@ -1,37 +1,48 @@
 ---
 title: What is BlankFX?
-description: Stablecoin FX infrastructure with corridor-first settlement and full traceability.
+description: Get paid in any stablecoin. BlankFX converts and settles stablecoins across currencies on-chain, with published fees and a full audit trail.
 ---
 
 # What is BlankFX?
 
-BlankFX is the stablecoin FX infrastructure layer for businesses that need fast settlement, tight pricing, and a clean audit trail.
+BlankFX lets businesses get paid in any stablecoin and settle in the one they want. Payments, conversions and liquidity run on smart contracts on Ethereum, priced against live FX oracles, with every movement traceable on-chain.
 
 ## What it does
 
-BlankFX is built for corridor-based settlement rather than generic token swapping. The focus is predictable execution, not broad DeFi trading.
+- **Accept payments** in any listed stablecoin through payment links, a point-of-sale till or the API.
+- **Convert** between stablecoins of the same currency (e.g. USDC ↔ USDT) or across currencies (e.g. USDC ↔ EURC), atomically.
+- **Supply liquidity** to a currency pool and earn a share of the trading fees.
+- **Trade by RFQ**: request firm quotes from market makers for larger cross-currency tickets.
 
-Pricing is designed to stay tight, execution is routed for best price, and every transfer leaves a clear audit trail.
+Funds never sit with BlankFX. Every value movement is signed by the user's own wallet.
 
 ## Who it's for
 
-- **Founders and operators** moving treasury balances across corridors
-- **Web3 businesses** that need FX execution inside their product flow
-- **Ops and treasury teams** that care about control, reconciliation, and traceability
+- **Payment platforms and invoicing companies** that want to accept every major stablecoin and settle in one.
+- **Merchants** taking stablecoin payments in store or online.
+- **Market makers** quoting cross-currency flow over RFQ. See [RFQ for market makers](/api-reference/rfq-market-makers).
+- **Stablecoin issuers** listing a coin. See [How the exchange works](/how-it-works) and [listing requirements](/listing-requirements).
+
+## Networks
+
+| Network | Status |
+|---|---|
+| Sepolia (testnet) | Live |
+| Ethereum (mainnet) | Planned |
 
 ## Core concepts
 
 <CardGroup cols={2}>
-  <Card title="Settlement" icon="arrows-rotate" href="/swaps">
-    Execute corridor-based swaps with fast settlement and no unnecessary friction.
+  <Card title="How the exchange works" icon="gears" href="/how-it-works">
+    Pools, pricing, oracles, fees and controls.
   </Card>
-  <Card title="Liquidity" icon="chart-line" href="/earn">
-    Supply stablecoins into pools that support execution and earn from trading activity.
+  <Card title="Swaps" icon="arrows-rotate" href="/swaps">
+    Same-currency and cross-currency conversion.
   </Card>
-  <Card title="Fees" icon="receipt" href="/fees">
-    See how pricing, spreads, and execution costs are presented.
+  <Card title="Earn" icon="chart-line" href="/earn">
+    Supply stablecoins to a currency pool and earn from trading fees.
   </Card>
   <Card title="Contracts" icon="file-contract" href="/contracts">
-    Review deployed contract addresses and the current testnet footprint.
+    Deployed contract and token addresses.
   </Card>
 </CardGroup>
