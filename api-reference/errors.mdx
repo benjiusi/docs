@@ -7,21 +7,13 @@ description: The error shape, every error code, safe retries, and per-key rate l
 
 ## Errors
 
-Almost every error shares one shape:
+Every error shares one shape:
 
 ```json
 { "error": { "code": "<slug>", "message": "..." } }
 ```
 
 Match on `error.code` (a stable slug), not the human-readable `message`.
-
-<Warning>
-A few responses do **not** use this shape yet. Handle them by HTTP status:
-
-- **`429` rate limits** return `{ "error": "Too many requests. Try again later." }` with a `Retry-After` header.
-- **`POST /wallets`** returns failures as `{ "error": "<message>" }`.
-- **Source-wallet denials on `POST /payment-links` and same-currency `POST /transfers`** return `403` with `{ "error": "<message>", "code": "SOURCE_WALLET_FORBIDDEN", ... }`.
-</Warning>
 
 ### Authentication
 
@@ -48,14 +40,17 @@ A few responses do **not** use this shape yet. Handle them by HTTP status:
 | `400` | `invalid_url`, `invalid_events` | `POST /webhooks`. |
 | `400` | `invalid_tx_hash` | `POST /transfers/{id}/submit`. |
 | `400` | `invalid_label`, `invalid_chain`, `invalid_address`, `invalid_metadata`, `contact_cap` | `POST /contacts`. |
-| `400` | `siwe_failed`, `address_mismatch`, `promote_denied`, `last_signer` | Wallet management routes. |
+| `400` | `siwe_failed`, `address_mismatch`, `promote_denied`, `last_signer` | Wallet management routes. `POST /wallets` returns `siwe_failed` as `401` and a malformed proof as `400 invalid_request`. |
+| `403` | `source_wallet_forbidden` | `POST /payment-links`, `POST /transfers`: the source wallet is not one of your signing wallets, or is not permitted for this action. |
 | `404` | `not_found` | The resource does not exist or belongs to another account. |
 | `409` | `status_conflict` | `PATCH /payment-links/{id}`: the link is paid or expired and can't be cancelled. |
 | `409` | `idempotency_in_progress` | A request with the same `Idempotency-Key` is still running. Comes with `Retry-After: 1`. |
 | `409` | `endpoint_cap_reached` | `POST /webhooks`: 10 active endpoints already. |
+| `409` | `wallet_owned_by_other_account` | `POST /wallets`: another account already signs with that wallet. |
 | `409` | `duplicate` | `POST /contacts`: same address and chain already saved. |
 | `409` | `tx_hash_reused` | `POST /transfers/{id}/submit`: that transaction already confirmed another transfer. |
 | `422` | `transfer_unverified` | `POST /transfers/{id}/submit`: no matching ERC-20 `Transfer` in that transaction. |
+| `429` | `rate_limited` | Over the per-key rate limit. See [Rate limits](#rate-limits). |
 | `502` | `no_quotes` | `POST /fx/quotes`: no rail can quote this pair or amount right now. This is also what an unknown pair returns. |
 | `502` | `balances_unavailable` | `GET /balances`: on-chain balances could not be read. |
 | `502` | `verify_failed` | `POST /transfers/{id}/submit`: the transaction could not be checked on-chain. |
@@ -64,7 +59,7 @@ A few responses do **not** use this shape yet. Handle them by HTTP status:
 
 ### `upstream_error`
 
-FX accept and submit, and cross-currency transfers, reuse the same internal trade path as the BlankFX app. When that path refuses, you get:
+FX accept and submit, and cross-currency transfers, reuse the same internal trade path as the BlankFX app. When that path refuses with a known reason, you get that reason's code: `source_wallet_forbidden`, `kyc_verification_required` or `wallet_suspended` (all `403`). Any other refusal comes back as:
 
 ```json
 { "error": { "code": "upstream_error", "message": "<reason>" } }
@@ -75,7 +70,7 @@ The HTTP status is passed through from the trade path, so read the status first:
 | Status | Typical reason |
 |---|---|
 | `400` | The order could not be prepared or the signature was rejected (for example no route for the pair, or a malformed signature). |
-| `403` | The signer wallet is not permitted for this action (identity verification required, wallet suspended, or the unverified daily cap reached). Message example: `Source wallet is not permitted for swap`. |
+| `403` | The signer wallet is not permitted for this action and no specific code applies (for example the unverified daily cap is reached). |
 | `409` | The quote expired or the order is no longer in a state that allows this step. Request a fresh quote. |
 | `422` | The funding transaction reverted, or does not contain the expected on-chain event. |
 | `503` | Trading or the RFQ escrow is temporarily unavailable. |
@@ -114,7 +109,7 @@ Limits are per key, counted in fixed one-minute windows.
 | Reads | 600 / min | Every `GET`, plus `POST /fx/quotes` |
 | Writes | 120 / min | Every other `POST`, `PATCH` and `DELETE` |
 
-Over the limit returns `429` with a `Retry-After` header (seconds until the window resets) and the body `{ "error": "Too many requests. Try again later." }`. Wait for `Retry-After`, then re-sign and retry.
+Over the limit returns `429` with a `Retry-After` header (seconds until the window resets) and the body `{ "error": { "code": "rate_limited", "message": "Too many requests. Try again later." } }`. Wait for `Retry-After`, then re-sign and retry.
 
 ## List limits
 
