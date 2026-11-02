@@ -12,8 +12,9 @@ Register endpoints (scope `webhooks`) to receive events as they happen.
 | Event | Fires when | `data` fields |
 |---|---|---|
 | `payment_link.paid` | a payment link is paid | `id`, `status`, `amount`, `currency`, `payer_tx_hash`, and `paid_via: "x402"` when an AI agent paid over [x402](/api-reference/x402) |
+| `charge.settled` | a Tap (point-of-sale) charge settles | `id`, `status`, `amount`, `currency`, `tx_hash` |
 | `fx.order.settled` / `.failed` / `.refunded` | an FX order reaches that state | `id`, `state`, `route`, `tx_hash` |
-| `transfer.confirmed` / `.failed` | a transfer reaches that state | `id`, `state`, `kind`, `tx_hash` |
+| `transfer.confirmed` / `.failed` | a transfer reaches that state, including a `broadcasting` transfer that later confirms on-chain | `id`, `state`, `kind`, `tx_hash` |
 | `webhook.test` | you call `POST /webhooks/{id}/test` | `message` |
 
 Subscribe to events by name when you register. An FX order that ends `expired` sends no webhook. Treat a webhook as a signal and read the resource (`GET /fx/orders/{id}`, `GET /transfers/{id}`, `GET /payment-links/{id}`) for its current state.
@@ -89,13 +90,13 @@ A delivery succeeds when your endpoint answers any `2xx` within **10 seconds**. 
 | Attempt | When |
 |---|---|
 | 1 | as soon as the event occurs (normally within about 15 seconds) |
-| 2 | 5 minutes later |
-| 3 | 30 minutes later |
-| 4 | 2 hours later |
-| 5 | 6 hours later |
+| 2 | 1 minute later |
+| 3 | 5 minutes later |
+| 4 | 30 minutes later |
+| 5 | 2 hours later |
 | 6 | 6 hours later |
 
-That is 6 attempts over about 14 hours 35 minutes. If the sixth attempt fails, the delivery is dropped **and the whole endpoint is disabled**: it receives no further events. There is no re-enable call; delete the endpoint and register it again. Test deliveries follow the same rules.
+That is 6 attempts over about 8 hours 36 minutes. If the sixth attempt fails, the delivery is dropped **and the whole endpoint is disabled**: it receives no further events. There is no re-enable call; delete the endpoint and register it again. Test deliveries follow the same rules.
 
 ## Managing endpoints
 
@@ -107,5 +108,5 @@ DELETE /webhooks/{id}      → remove an endpoint
 ```
 
 - `url` must be **HTTPS** and resolve to a public address. Private, loopback and cloud-metadata addresses are refused with `400 invalid_url`.
-- `events` must list one or more of `payment_link.paid`, `fx.order.settled`, `fx.order.failed`, `fx.order.refunded`, `transfer.confirmed`, `transfer.failed`. `webhook.test` is not subscribable; it is sent only by the test call.
+- `events` must list one or more of `payment_link.paid`, `charge.settled`, `fx.order.settled`, `fx.order.failed`, `fx.order.refunded`, `transfer.confirmed`, `transfer.failed`. `webhook.test` is not subscribable; it is sent only by the test call.
 - Each account can have up to **10** active endpoints (`409 endpoint_cap_reached`).

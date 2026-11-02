@@ -3,7 +3,7 @@
   "info": {
     "title": "BlankFX Public API",
     "version": "1.0.0",
-    "description": "Programmatic, **non-custodial** access to BlankFX: read your account, move money, and trade FX\nacross the AMM (gasless Permit2 relay) and RFQ (MM-backed escrow) rails. BlankFX never holds your\nkeys — every value operation returns EIP-712 typed-data that **you** sign with your registered\nwallet.\n\n## Base URL\n\nAll endpoints are under `https://api.blankfx.org/public/v1`. Test keys (`bfx_test_`) run on\nEthereum Sepolia (testnet); live keys and Ethereum mainnet are not yet available. Errors share one shape: `{ \"error\": { \"code\": \"<slug>\", \"message\": \"...\" } }`.\n\n## Authentication — Ed25519 request signing\n\nThere is **no shared secret**. You generate an Ed25519 keypair, register the *public* key, and\nsign every request with the *private* key (which BlankFX never sees).\n\n1. **Create a key** in the dashboard (Settings → API keys). Your Ed25519 keypair is generated in\n   the browser; the **private key (PKCS8 PEM) is shown once** — store it securely. Only the public\n   key is sent to BlankFX. You choose the key's scopes (below).\n2. **Sign each request.** Build the canonical string (LF-separated, no trailing newline):\n   ```\n   ${timestamp}\\n${METHOD}\\n${requestTarget}\\n${sha256_hex(body)}\n   ```\n   where `timestamp` is unix **seconds**, `METHOD` is upper-case, `requestTarget` is the path\n   **including any query string** (e.g. `/public/v1/fx/orders?limit=10`), and `sha256_hex(body)` is\n   the hex SHA-256 of the raw request body (`sha256_hex(\"\")` for GET/no-body). Then send three\n   headers:\n   - `BFX-API-KEY`: your `key_id`\n   - `BFX-TIMESTAMP`: the same unix-seconds timestamp\n   - `BFX-SIGNATURE`: `base64( Ed25519_sign(privateKey, canonicalString) )`\n3. **Freshness + replay.** The timestamp must be within **±30s** of server time, and each signature\n   is single-use — re-sending an identical signed request is rejected (`replayed`). Always sign\n   retries with a **fresh timestamp** (even for idempotent calls).\n\n### Node signing example\n```js\nimport crypto from 'node:crypto';\nfunction signedHeaders({ keyId, privateKeyPem, method, requestTarget, body = '' }) {\n  const ts = Math.floor(Date.now() / 1000).toString();\n  const bodyHash = crypto.createHash('sha256').update(body).digest('hex');\n  const canonical = `${ts}\\n${method.toUpperCase()}\\n${requestTarget}\\n${bodyHash}`;\n  const sig = crypto.sign(null, Buffer.from(canonical), crypto.createPrivateKey(privateKeyPem));\n  return { 'BFX-API-KEY': keyId, 'BFX-TIMESTAMP': ts, 'BFX-SIGNATURE': sig.toString('base64') };\n}\n```\n\n## Scopes\n\nEach key carries a subset of scopes; a call missing the required scope returns `403\ninsufficient_scope`.\n- `read` — account, balances, wallets, rates, transactions, payment-link reads, exports\n- `trade` — FX quotes, accept, order submit/read (`/fx/*`)\n- `pay` — transfers, payment-link create/cancel, contacts (`/transfers*`, `/payment-links`)\n- `wallets` — programmatic signer-wallet register/manage (`/wallets*`)\n- `webhooks` — webhook endpoint management\n\n## Idempotency\n\nResource-mutating calls — payment-link create/cancel, webhook create, wallet register, contact\ncreate, FX quote accept, transfer create — REQUIRE an `Idempotency-Key` header (any unique string,\ne.g. a UUID); a request without it returns `400 idempotency_key_required`. Replaying the same key on\nthe same route within 24h returns the original response (with `Idempotency-Replayed: true`) instead\nof acting twice. Other write-shaped routes (e.g. `/transfers/:id/submit`, `/webhooks/:id/test`,\n`/fx/quotes`) do not take the header.\n\n## Rate limits\n\nPer key, per minute: **600** read requests and **120** write requests. Over the limit returns `429`\nwith a `Retry-After` header (seconds).\n\n## Non-custodial value flow (FX)\n\n1. `POST /fx/quotes` — get indicative AMM + firm RFQ quotes for a pair.\n2. `POST /fx/quotes/{id}/accept` — locks the quote, creates an order, and returns **EIP-712\n   typed-data** to sign (AMM → a Permit2-witness order; RFQ → an escrow-funding order).\n3. Sign the typed-data with your registered wallet.\n4. `POST /fx/orders/{id}/submit` — send `{ signature }` (AMM: the relayer broadcasts your signed\n   Permit2 order) or `{ tx_hash }` (RFQ: you self-broadcast the escrow-funding tx; the backend\n   verifies the on-chain event). Poll `GET /fx/orders/{id}` for `settled`.\n\n## Transfers\n\n- **Cross-currency** (`from_currency ≠ currency`): one atomic swap delivered to the payee — `POST\n   /transfers` returns a Permit2-witness order to sign; `submit { signature }` relays it.\n- **Same-currency** (same token): non-custodial self-broadcast — you sign and broadcast a standard\n   ERC-20 transfer, then `submit { tx_hash }` and the backend verifies the on-chain `Transfer`.\n\n## Webhooks\n\nRegister endpoints (scope `webhooks`) to receive `payment_link.paid`, `fx.order.settled|failed|\nrefunded`, and `transfer.confirmed|failed`. Each delivery is HMAC-signed with a per-endpoint secret\nshown once at registration; verify it before trusting the payload.",
+    "description": "Programmatic, **non-custodial** access to BlankFX: read your account, move money, and trade FX\nacross the AMM (gasless Permit2 relay) and RFQ (MM-backed escrow) rails. BlankFX never holds your\nkeys — every value operation returns EIP-712 typed-data that **you** sign with your registered\nwallet.\n\n## Base URL\n\nAll endpoints are under `https://api.blankfx.org/public/v1`. Test keys (`bfx_test_`) run on\nEthereum Sepolia (testnet); live keys and Ethereum mainnet are not yet available. Errors share one shape: `{ \"error\": { \"code\": \"<slug>\", \"message\": \"...\" } }`.\n\n## Authentication — Ed25519 request signing\n\nThere is **no shared secret**. You generate an Ed25519 keypair, register the *public* key, and\nsign every request with the *private* key (which BlankFX never sees).\n\n1. **Create a key** in the dashboard (Settings → API keys). Your Ed25519 keypair is generated in\n   the browser; the **private key (PKCS8 PEM) is shown once** — store it securely. Only the public\n   key is sent to BlankFX. You choose the key's scopes (below).\n2. **Sign each request.** Build the canonical string (LF-separated, no trailing newline):\n   ```\n   ${timestamp}\\n${METHOD}\\n${requestTarget}\\n${sha256_hex(body)}\n   ```\n   where `timestamp` is unix **seconds**, `METHOD` is upper-case, `requestTarget` is the path\n   **including any query string** (e.g. `/public/v1/fx/orders?limit=10`), and `sha256_hex(body)` is\n   the hex SHA-256 of the raw request body (`sha256_hex(\"\")` for GET/no-body). Then send three\n   headers:\n   - `BFX-API-KEY`: your `key_id`\n   - `BFX-TIMESTAMP`: the same unix-seconds timestamp\n   - `BFX-SIGNATURE`: `base64( Ed25519_sign(privateKey, canonicalString) )`\n3. **Freshness + replay.** The timestamp must be within **±30s** of server time, and each signature\n   is single-use — re-sending an identical signed request is rejected (`replayed`). Always sign\n   retries with a **fresh timestamp** (even for idempotent calls).\n\n### Node signing example\n```js\nimport crypto from 'node:crypto';\nfunction signedHeaders({ keyId, privateKeyPem, method, requestTarget, body = '' }) {\n  const ts = Math.floor(Date.now() / 1000).toString();\n  const bodyHash = crypto.createHash('sha256').update(body).digest('hex');\n  const canonical = `${ts}\\n${method.toUpperCase()}\\n${requestTarget}\\n${bodyHash}`;\n  const sig = crypto.sign(null, Buffer.from(canonical), crypto.createPrivateKey(privateKeyPem));\n  return { 'BFX-API-KEY': keyId, 'BFX-TIMESTAMP': ts, 'BFX-SIGNATURE': sig.toString('base64') };\n}\n```\n\n## Scopes\n\nEach key carries a subset of scopes; a call missing the required scope returns `403\ninsufficient_scope`.\n- `read` — account, balances, wallets, rates, transactions, payment-link reads, exports\n- `trade` — FX quotes, accept, order submit/read (`/fx/*`)\n- `pay` — transfers, payment-link create/cancel, contacts (`/transfers*`, `/payment-links`)\n- `wallets` — programmatic signer-wallet register/manage (`/wallets*`)\n- `webhooks` — webhook endpoint management\n\n## Idempotency\n\nResource-mutating calls — payment-link create/cancel, webhook create, wallet register, contact\ncreate, FX quote accept, transfer create — REQUIRE an `Idempotency-Key` header (any unique string,\ne.g. a UUID); a request without it returns `400 idempotency_key_required`. Replaying the same key on\nthe same route within 24h returns the original response (with `Idempotency-Replayed: true`) instead\nof acting twice. Other write-shaped routes (e.g. `/transfers/:id/submit`, `/webhooks/:id/test`,\n`/fx/quotes`) do not take the header.\n\n## Rate limits\n\nPer key, per minute: **600** read requests and **120** write requests. Over the limit returns `429`\nwith a `Retry-After` header (seconds).\n\n## Non-custodial value flow (FX)\n\n1. `POST /fx/quotes` — get indicative AMM + firm RFQ quotes for a pair.\n2. `POST /fx/quotes/{id}/accept` — locks the quote, creates an order, and returns **EIP-712\n   typed-data** to sign (AMM → a Permit2-witness order; RFQ → an escrow-funding order).\n3. Sign the typed-data with your registered wallet.\n4. `POST /fx/orders/{id}/submit` — send `{ signature }` (AMM: the relayer broadcasts your signed\n   Permit2 order) or `{ tx_hash }` (RFQ: you self-broadcast the escrow-funding tx; the backend\n   verifies the on-chain event). Poll `GET /fx/orders/{id}` for `settled`.\n\n## Transfers\n\n- **Cross-currency** (`from_currency ≠ currency`): one atomic swap delivered to the payee — `POST\n   /transfers` returns a Permit2-witness order to sign; `submit { signature }` relays it.\n- **Same-currency** (same token): non-custodial self-broadcast — you sign and broadcast a standard\n   ERC-20 transfer, then `submit { tx_hash }` and the backend verifies the on-chain `Transfer`.\n\n## Webhooks\n\nRegister endpoints (scope `webhooks`) to receive `payment_link.paid`, `charge.settled`,\n`fx.order.settled|failed|refunded`, and `transfer.confirmed|failed`. Each delivery is HMAC-signed\nwith a per-endpoint secret shown once at registration; verify it before trusting the payload.",
     "contact": {
       "name": "BlankFX",
       "url": "https://blankfx.org"
@@ -344,6 +344,9 @@
           "201": {
             "description": "Linked"
           },
+          "400": {
+            "description": "idempotency_key_required, or invalid input"
+          },
           "401": {
             "description": "SIWE failed"
           },
@@ -352,9 +355,6 @@
           },
           "409": {
             "description": "Wallet is linked to a different account, or idempotency_in_progress"
-          },
-          "400": {
-            "description": "idempotency_key_required, or invalid input"
           }
         },
         "operationId": "registerWallet",
@@ -672,6 +672,9 @@
           "200": {
             "description": "Cancelled (repeat cancel is an idempotent no-op)"
           },
+          "400": {
+            "description": "idempotency_key_required, or invalid input"
+          },
           "401": {
             "description": "Auth failed"
           },
@@ -683,9 +686,6 @@
           },
           "409": {
             "description": "status_conflict: the link is paid or expired and can no longer be cancelled (also returned as status_conflict while an agent payment is in progress); or idempotency_in_progress"
-          },
-          "400": {
-            "description": "idempotency_key_required, or invalid input"
           }
         },
         "operationId": "cancelPaymentLink",
@@ -757,6 +757,9 @@
           "201": {
             "description": "Accepted"
           },
+          "400": {
+            "description": "idempotency_key_required, or invalid input"
+          },
           "401": {
             "description": "Auth failed"
           },
@@ -765,9 +768,6 @@
           },
           "404": {
             "description": "Quote not found"
-          },
-          "400": {
-            "description": "idempotency_key_required, or invalid input"
           },
           "409": {
             "description": "idempotency_in_progress: a request with this key is still running; retry shortly"
