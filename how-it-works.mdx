@@ -77,7 +77,7 @@ All rates are contract parameters, published on-chain and bounded in code (the t
 |---|---|
 | **Pause** | Stops swaps, deposits **and withdrawals** in a pool (or new escrows on RFQ) during an incident, until unpaused. |
 | **Remove a coin** | The admin can delist a coin from a pool. We announce delistings with a wind-down window wherever user safety allows (see [listing requirements](/listing-requirements#after-youre-listed)). |
-| **Access tiers** | Unverified wallets are capped at $10,000 per rolling 30 days on-chain; verified wallets are not capped on-chain. Market makers need the market-maker tier. See [Contracts](/contracts#access-tiers). |
+| **Access tiers** | Volume limits apply to unverified wallets on-chain. Verified wallets have no on-chain volume cap. Market makers need the market-maker tier. See [Contracts](/contracts#access-tiers). |
 | **Upgrades** | Pools are upgradeable proxies. A timelock on upgrades is planned before mainnet. |
 | **Parameter bounds** | Fees, coverage floors and limits can only be set within hard-coded ranges. |
 
